@@ -152,9 +152,10 @@
   border-radius: 5px;
   border: 1px solid var(--color-border);
   color: var(--color-text1st);
-  font-size: 20px;
+  font-size: 15px;
   font-family: Poppins, sans-serif;
   transition: 0.3s;
+  font-weight: bold;
 }
 
 .textbox2:hover {
@@ -251,6 +252,7 @@ nav {
   width: 100%;
   height: 85px;
   border-bottom: 1px solid var(--color-border);
+  z-index: 100;
 }
 
 .sidebar {
@@ -522,13 +524,23 @@ nav {
   right: 5px;
 }
 
-.online_animation {
-  width: 12px;
-  height: 12px;
+.online_animation.inactive {
+  width: 8px;
+  height: 8px;
+  background-color: #ff5656;
+  border-radius: 100%;
+  margin-top: 21px;
+  animation: Index_pulse_inactive 1s infinite;
+  border: 2.5px solid #ba3c3c;
+}
+
+.online_animation.active {
+  width: 8px;
+  height: 8px;
   background-color: var(--color-primary);
   border-radius: 100%;
   margin-top: 21px;
-  animation: Index_pulse 1s infinite;
+  animation: Index_pulse_active 1s infinite;
   border: 2.5px solid #172b62;
 }
 
@@ -536,10 +548,27 @@ nav {
   margin-top: 35px;
 }
 
-@keyframes Index_pulse {
+@keyframes Index_pulse_active {
   0% {
       transform: scale(.95);
       box-shadow: 0 0 0 0 #174662
+  }
+
+  70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 7.5px transparent
+  }
+
+  to {
+      transform: scale(.95);
+      box-shadow: 0 0 0 0 transparent
+  }
+}
+
+@keyframes Index_pulse_inactive {
+  0% {
+      transform: scale(.95);
+      box-shadow: 0 0 0 0 #ba3c3c
   }
 
   70% {
@@ -663,6 +692,56 @@ button {
 
 .walletusername {
   display: flex;
+  transition: 0.2s;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.walletusername:hover {
+  background-color: #1d2735;
+}
+
+.walletoptions {
+  display: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background-color: var(--color-1st);
+}
+
+.walletoptions button {
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  font-family: Poppins, sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+  text-align: left;
+  color: var(--color-text1st);
+  transition: 0.2s;
+  border-radius: 10px;
+}
+
+.walletoptions button:hover {
+  background-color: var(--color-2nd);
+}
+
+.walletoptions button.red {
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+  text-align: left;
+  color: #ff5656;
+  transition: 0.2s;
+  border-radius: 10px;
+}
+
+.walletoptions button.red:hover {
+  background-color: #5b2a2a;
 }
 
 .dark {

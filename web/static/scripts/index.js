@@ -8,6 +8,9 @@ var games_socket = io.connect('https://bloxyplus.com/games');
 var site_socket = io.connect('https://bloxyplus.com/site');
 
 site_socket.on('users_added', function(data) {
+    $("#online_animation").removeClass("inactive")
+    $("#online_animation").removeClass("active")
+    $("#online_animation").addClass("active")
     $("#online_users").text(data.users.toString());
 });
 
@@ -231,6 +234,8 @@ function Refresh() {
 }
 
 function ShowPopup(ID) {
+    $('[id$="popup"]').hide();
+    
     $(ID).animate({
         top: '50%',
         opacity: 'show'

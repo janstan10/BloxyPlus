@@ -37,8 +37,8 @@
             <h1 style="text-align: left;">Welcome to BloxyPlus</h1>
             <h4 style="text-align: left; font-size: 20px; margin: 0; padding: 0;">By logging in, you acknowledge that you are at least 18 years of age, that any items you wager are not stolen, and that you agree to our Terms of Use.</h4>
             <div style="position: relative; bottom: 0;">
-                <input id="loginusername" style="padding-left: 10px;" placeholder="Please enter your Roblox Username.." class="textbox">
-                <button onclick="LoginButton1Click();" style="width: 97.5%; position: relative; left: -25px;" class="button secondary">Login</button>
+                <input id="loginusername" style="width: calc(100% - 25px); padding-left: 10px;" placeholder="Please enter your Roblox Username.." class="textbox">
+                <button onclick="LoginButton1Click();" style="width: 99%; position: relative; left: -25px;" class="button secondary">Login</button>
             </div>
         </div>
       </div>
@@ -53,8 +53,23 @@
             <h1 style="text-align: left;">Before we start..</h1>
             <h4 style="text-align: left; font-size: 20px; margin: 0; padding: 0;">Please set your Roblox Description to the Phrase below. Once completed, click the 'Login' button to complete registration.</h4>
             <div style="position: relative; bottom: 0;">
-                <input id="loginphrase" onclick="Copy($('#loginphrase').val()); $('#loginphrase').select();" readonly style="cursor: pointer; padding-left: 10px;" placeholder="Login Phrase" class="textbox">
-                <button onclick="LoginButton2Click();" style="width: 97.5%; position: relative; left: -25px;" class="button secondary">Login</button>
+                <input id="loginphrase" onclick="Copy($('#loginphrase').val()); $('#loginphrase').select();" readonly style="width: calc(100% - 25px); cursor: pointer; padding-left: 10px;" placeholder="Login Phrase" class="textbox">
+                <button onclick="LoginButton2Click();" style="width: 99%; position: relative; left: -25px;" class="button secondary">Login</button>
+            </div>
+        </div>
+      </div>
+      <div id="affiliatespopup" class="popup">
+        <div onclick="HidePopup('#affiliatespopup');" class="popupclose">
+            <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+            </svg>
+        </div>
+        <div style="margin-top: 25px; text-align: left; position: absolute; top: 0; left: 25px">
+            <h1 style="text-align: left;">Affiliates</h1>
+            <h4 style="text-align: left; font-size: 20px; margin: 0; padding: 0;">Earn a cut whenever someone you referred places a bet with a value of over 10 huge pets. Terms may apply.</h4>
+            <div style="position: relative; bottom: 0;">
+                <input id="affiliateslink" onclick="Copy($('#affiliateslink').val()); $('#affiliateslink').select();" readonly style="width: calc(100% - 25px); cursor: pointer; padding-left: 10px;" value="https://bloxyplus.com/r/{{ userdata.userid }}" class="textbox">
             </div>
         </div>
       </div>
@@ -189,9 +204,18 @@
                 +
             </button>
         </div>
-        <div class="walletusername" style="position: fixed; right: 15px; top: 5px">
-            <img class="hoverimg transparent" style="margin-top: 12px; margin-right: 10px; width: 45px; height: 45px;" src="{{ userdata.thumbnail }}">
-            <h3 class="texthover" style="margin-top: 25px; text-align: right;">{{ userdata.username }}</h3>
+        <div onclick="$('#siteoptions').toggle()" class="walletusername" style="position: fixed; right: 15px; top: 10px; height: 60px; width: 250px;">
+            <img style="margin-left: 25px; user-select: none; border-radius: 100%; margin-right: 10px; width: 45px; height: 45px;" src="{{ userdata.thumbnail }}">
+            <h3 style="user-select: none; margin-top: 15px; text-align: right;">{{ userdata.username }}</h3>
+        </div>
+        <div id="siteoptions" class="walletoptions" style="position: fixed; right: 15px; top: 70px; height: 190px; width: 250px;">
+            <div style="background-color: transparent; width: 90%; margin-left: 5%; margin-top: 5%; height: 80%;">
+                <button onclick="ShowPopup('#affiliatespopup');">Affiliates</button>
+                <button onclick="Notification('Coming soon!', 'Error', 3000)">Giveaway</button>
+                <a href="logout">
+                    <button class="red">Logout</button>
+                </a>
+            </div>
         </div>
         {% else %}
         <div style="display: flex; position: fixed; right: 15px; top: 5px">
@@ -240,7 +264,7 @@
             <div style="margin: 0; text-align: right; margin-right: 13px; position: fixed; top: 0.5px; right: 13px">
                 <div class="online_background">
                     <h2 style="margin-bottom: 12px;" id="online_users" className="nocopy">0</h2>
-                    <div class="online_animation"></div>
+                    <div id="online_animation" class="online_animation inactive"></div>
                 </div>
             </div>
         </div>
@@ -256,7 +280,7 @@
             </div>
         </div>
         {% if logged_in %}
-        <input id="chatmessage" onchange="SendMessage();" style="padding-left: 10px;" placeholder="Enter Chat Message.." class="textbox2">
+        <input id="chatmessage" onchange="SendMessage();" style="padding-left: 10px;" placeholder="Say something!" class="textbox2">
         {% else %}
         <input id="chatmessage" readonly style="padding-left: 10px;" placeholder="You must login to chat" class="textbox2">
         {% endif %}

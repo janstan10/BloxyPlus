@@ -36,7 +36,7 @@ socketio = SocketIO(app)
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["100000 per hour"],
     storage_uri="memory://",
 )
 
@@ -144,6 +144,10 @@ def handle_site_disconnect():
     print("Connected to Site")
     connected_clients -= 1
     socketio.emit("users_added", {"users": connected_clients}, namespace="/site")
+
+@app.route("/r/<userid>")
+def user_profile(userid):
+    return redirect("/")
 
 @app.route("/")
 def index():

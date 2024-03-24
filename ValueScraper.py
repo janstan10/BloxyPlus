@@ -34,8 +34,8 @@ ItemsChanged = 0
 ItemsAdded = 0
 ItemsTotal = 0
 
-Response = httpx.get("https://petsimulatorvalues.com/ps99.php?category=huges").text
-#Response = httpx.get("https://petsimulatorvalues.com/ps99.php?category=titanics").text
+#Response = httpx.get("https://petsimulatorvalues.com/ps99.php?category=huges").text
+Response = httpx.get("https://petsimulatorvalues.com/ps99.php?category=titanics").text
 Soup = BeautifulSoup(Response, 'html5lib')
 
 Items = Soup.select("body > section.md-content.pb-5 > div > div.cards-groups.justify-content-around.content-scroll > a")
