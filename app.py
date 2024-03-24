@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, request, make_response, redirect, render_template_string, send_file
 from flask_jwt_extended import JWTManager, create_access_token, decode_token
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO
 from io import BytesIO
 from functools import wraps
@@ -31,6 +33,12 @@ app.config['JWT_SECRET_KEY'] = 'your_secret_key'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=3650)
 jwt = JWTManager(app)
 socketio = SocketIO(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 connected_clients = 56
 
@@ -253,6 +261,7 @@ def get_messages():
     return jsonify(messages=messages), 200
 
 @app.route("/api/chat/send", methods=["POST"])
+@limiter.limit("100 per minute")
 def send_message():
     if not check_if_logged_in(request):
         return jsonify(error=True, message="You are not logged in"), 400
@@ -288,6 +297,7 @@ def send_message():
         return jsonify(error=True, message="Internal Server Error"), 500
 
 @app.route('/api/coinflip/get')
+@limiter.limit("100 per minute")
 def get_coinflip():
     send = {}
     allgames = []
@@ -302,6 +312,7 @@ def get_coinflip():
     return jsonify(send), 200
 
 @app.route('/api/coinflip/join', methods=['POST'])
+@limiter.limit("100 per minute")
 @transaction_lock
 def join_coinflip():
     if not check_if_logged_in(request):
@@ -395,6 +406,7 @@ def join_coinflip():
     return jsonify(error=False, message="Successfully joined the game!"), 200
 
 @app.route('/api/coinflip/create', methods=['POST'])
+@limiter.limit("100 per minute")
 @transaction_lock
 def create_coinflip():
     if not check_if_logged_in(request):
@@ -485,6 +497,7 @@ def create_coinflip():
         return jsonify(error=True, message="We encountered an error grabbing your data, please try again later"), 400
 
 @app.route('/api/user/withdraw', methods=['POST'])
+@limiter.limit("100 per minute")
 @transaction_lock
 def withdraw():
     if not check_if_logged_in(request):
@@ -547,6 +560,7 @@ def withdraw():
         return jsonify(error=True, message="We encountered an error grabbing your data, please try again later"), 400
 
 @app.route("/api/user/inventory", methods=['GET'])
+@limiter.limit("100 per minute")
 def get_inventory():
     if not check_if_logged_in(request):
         return jsonify(error=True, message="You are not logged in"), 400
@@ -579,6 +593,7 @@ def get_inventory():
         return jsonify(error=True, message="We encountered an error grabbing your data, please try again later"), 400
 
 @app.route("/api/login/get", methods=['POST'])
+@limiter.limit("100 per minute")
 def get_login_code():
     if check_if_logged_in(request):
         return jsonify(error=True, message="You are already logged in"), 400
@@ -609,6 +624,7 @@ def get_login_code():
             return jsonify(error=True, message="Internal Server Error"), 500
 
 @app.route("/api/login/check", methods=['POST'])
+@limiter.limit("100 per minute")
 def check_login_code():
     if check_if_logged_in(request):
         return jsonify(error=True, message="You are already logged in"), 400
