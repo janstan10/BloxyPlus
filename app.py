@@ -399,7 +399,6 @@ def join_coinflip():
     
     users.update_one({"id": winner_identity}, {"$set": {"inventory": winner_inventory}})
     socketio.emit('game_ended', {'type': game_data['type'], 'winner': game_data["winner"], 'gid': str(game_data['gid']), 'value': game_data['value'], 'active': game_data['active'], 'heads': game_data['heads'], 'tails': game_data['tails']}, namespace='/games')
-    games.delete_one({"gid": game_id})
     users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
     thread = threading.Thread(target=remove_duplicate_pets)
     thread.start()
