@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <title>BloxyPlus - The #1 Roblox Arcade Site</title>
+        <link rel="stylesheet" href="../static/css/index.css">
+        <link rel="icon" type="image/x-icon" href="../static/img/favicon.png">
+        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    </head>
+    <body>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/superagent/8.1.2/superagent.min.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+        <script type="text/javascript" src="../static/scripts/index.js" ></script>
+        <script>
+            const Username = "{{ userdata.username }}"
+            const Thumbnail = "{{ userdata.thumbnail }}"
+            const Balance = "{{ userdata.balance }}"
+        </script>
+        <div id="loginpopup" class="popup">
+            <div id="closeloginpopup" class="popupclose">
+                <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </div>
+            <h2>Welcome to BloxyPlus</h2>
+            <h4>By logging in, you acknowledge that you are at least 18 years of age, that any items you wager are not stolen, and that you agree to our Terms of Use.</h4>
+            <div style="width: 100%;">
+                <p style="margin: 0;">Roblox Username</p>
+                <input id="loginusername" placeholder="Enter your Roblox Username..." class="textbox">
+                <button onclick="LoginButton1Click();">Login</button>
+            </div>
+        </div>
+        <div id="loginpopup2" class="popup">
+            <div id="closeloginpopup2" class="popupclose">
+                <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </div>
+            <h2>Before we start..</h2>
+            <h4>Please set your Roblox Description to the Phrase below. Once completed, click the 'Login' button to complete registration.</h4>
+            <div style="width: 100%;">
+                <p style="margin: 0;">Phrase</p>
+                <input readonly id="loginphrase" style="cursor: pointer;" placeholder="Phrase" class="textbox">
+                <button onclick="LoginButton2Click();">Login</button>
+            </div>
+        </div>
+        <nav>
+            <div style="height: 100px;">
+                <img src="../static/img/logo.png">
+            </div>
+            <div class="navItem active">
+                <svg fill="var(--color-text1st)" stroke-width="0" viewBox="0 0 24 24" height="1.5em" width="1.5em" xmlns="http://www.w3.org/2000/svg">
+                    <path xmlns="http://www.w3.org/2000/svg" d="M21,14.571C21,16.465,18.538,18,15.5,18S10,16.465,10,14.571s2.462-3.428,5.5-3.428S21,12.678,21,14.571Zm-5.5,5.286c-3.038,0-5.5-1.535-5.5-3.428v2.142C10,20.465,12.462,22,15.5,22S21,20.465,21,18.571V16.429C21,18.322,18.538,19.857,15.5,19.857Zm-7-11c3.038,0,5.5-1.535,5.5-3.428S11.538,2,8.5,2,3,3.535,3,5.429,5.462,8.857,8.5,8.857Zm-.125,4a5.58,5.58,0,0,1,2.181-2.389,8.44,8.44,0,0,1-2.056.25C5.462,10.714,3,9.179,3,7.286V9.428C3,11.3,5.4,12.811,8.375,12.853ZM8.5,22a8.83,8.83,0,0,0,1.079-.067,4.917,4.917,0,0,1-1.37-2.085C5.307,19.753,3,18.261,3,16.429v2.142C3,20.465,5.462,22,8.5,22ZM8,17.556V15.4c-2.8-.16-5-1.613-5-3.4v2.143C3,15.931,5.2,17.4,8,17.556Z"/>
+                </svg>
+                <h1 style="font-size: 18.5px;">COINFLIP</h1>
+            </div>
+            {% if huadwdawd %}
+            <div class="navItem left">
+                <svg class="svghover" fill="var(--color-text1st)" stroke-width="0" viewBox="0 0 512 512" height="1.15em" width="1.15em" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.1 38.2C1.4 34.2 0 29.4 0 24.6C0 11 11 0 24.6 0H133.9c11.2 0 21.7 5.9 27.4 15.5l68.5 114.1c-48.2 6.1-91.3 28.6-123.4 61.9L4.1 38.2zm503.7 0L405.6 191.5c-32.1-33.3-75.2-55.8-123.4-61.9L350.7 15.5C356.5 5.9 366.9 0 378.1 0H487.4C501 0 512 11 512 24.6c0 4.8-1.4 9.6-4.1 13.6zM80 336a176 176 0 1 1 352 0A176 176 0 1 1 80 336zm184.4-94.9c-3.4-7-13.3-7-16.8 0l-22.4 45.4c-1.4 2.8-4 4.7-7 5.1L168 298.9c-7.7 1.1-10.7 10.5-5.2 16l36.3 35.4c2.2 2.2 3.2 5.2 2.7 8.3l-8.6 49.9c-1.3 7.6 6.7 13.5 13.6 9.9l44.8-23.6c2.7-1.4 6-1.4 8.7 0l44.8 23.6c6.9 3.6 14.9-2.2 13.6-9.9l-8.6-49.9c-.5-3 .5-6.1 2.7-8.3l36.3-35.4c5.6-5.4 2.5-14.8-5.2-16l-50.1-7.3c-3-.4-5.7-2.4-7-5.1l-22.4-45.4z"></path>
+                </svg>
+            </div>
+            <div class="navItem">
+                <svg class="svghover" fill="var(--color-text1st)" stroke-width="0" viewBox="0 0 640 512" height="1.15em" width="1.15em" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M144 0a80 80 0 1 1 0 160A80 80 0 1 1 144 0zM512 0a80 80 0 1 1 0 160A80 80 0 1 1 512 0zM0 298.7C0 239.8 47.8 192 106.7 192h42.7c15.9 0 31 3.5 44.6 9.7c-1.3 7.2-1.9 14.7-1.9 22.3c0 38.2 16.8 72.5 43.3 96c-.2 0-.4 0-.7 0H21.3C9.6 320 0 310.4 0 298.7zM405.3 320c-.2 0-.4 0-.7 0c26.6-23.5 43.3-57.8 43.3-96c0-7.6-.7-15-1.9-22.3c13.6-6.3 28.7-9.7 44.6-9.7h42.7C592.2 192 640 239.8 640 298.7c0 11.8-9.6 21.3-21.3 21.3H405.3zM224 224a96 96 0 1 1 192 0 96 96 0 1 1 -192 0zM128 485.3C128 411.7 187.7 352 261.3 352H378.7C452.3 352 512 411.7 512 485.3c0 14.7-11.9 26.7-26.7 26.7H154.7c-14.7 0-26.7-11.9-26.7-26.7z"></path>
+                </svg>
+            </div>
+            <div class="navItem">
+                <svg class="svghover" fill="var(--color-text1st)" stroke-width="0" viewBox="0 0 640 512" height="1.3em" width="1.3em" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M524.531,69.836a1.5,1.5,0,0,0-.764-.7A485.065,485.065,0,0,0,404.081,32.03a1.816,1.816,0,0,0-1.923.91,337.461,337.461,0,0,0-14.9,30.6,447.848,447.848,0,0,0-134.426,0,309.541,309.541,0,0,0-15.135-30.6,1.89,1.89,0,0,0-1.924-.91A483.689,483.689,0,0,0,116.085,69.137a1.712,1.712,0,0,0-.788.676C39.068,183.651,18.186,294.69,28.43,404.354a2.016,2.016,0,0,0,.765,1.375A487.666,487.666,0,0,0,176.02,479.918a1.9,1.9,0,0,0,2.063-.676A348.2,348.2,0,0,0,208.12,430.4a1.86,1.86,0,0,0-1.019-2.588,321.173,321.173,0,0,1-45.868-21.853,1.885,1.885,0,0,1-.185-3.126c3.082-2.309,6.166-4.711,9.109-7.137a1.819,1.819,0,0,1,1.9-.256c96.229,43.917,200.41,43.917,295.5,0a1.812,1.812,0,0,1,1.924.233c2.944,2.426,6.027,4.851,9.132,7.16a1.884,1.884,0,0,1-.162,3.126,301.407,301.407,0,0,1-45.89,21.83,1.875,1.875,0,0,0-1,2.611,391.055,391.055,0,0,0,30.014,48.815,1.864,1.864,0,0,0,2.063.7A486.048,486.048,0,0,0,610.7,405.729a1.882,1.882,0,0,0,.765-1.352C623.729,277.594,590.933,167.465,524.531,69.836ZM222.491,337.58c-28.972,0-52.844-26.587-52.844-59.239S193.056,219.1,222.491,219.1c29.665,0,53.306,26.82,52.843,59.239C275.334,310.993,251.924,337.58,222.491,337.58Zm195.38,0c-28.971,0-52.843-26.587-52.843-59.239S388.437,219.1,417.871,219.1c29.667,0,53.307,26.82,52.844,59.239C470.715,310.993,447.538,337.58,417.871,337.58Z"></path>
+                </svg>
+            </div>
+            {% endif %}
+            <div class="navItemRight">
+                {% if logged_in %}
+                    <div class="wallet">
+                        <div class="wallet left-side">
+                            <svg stroke="var(--color-primary)" stroke-width="25px" class="svghover" fill="var(--color-primary)" stroke-width="0" viewBox="0 0 680 512" height="5em" width="1.4em" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="var(--color-primary)" d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z"></path>
+                            </svg>
+                            <h1>{{ userdata.balance }}</h1>
+                        </div>
+                        <button class="wallet right-side">
+                            Wallet
+                        </button>
+                    </div>
+                    <h1>{{ userdata.username }}</h1>
+                {% else %}
+                    <button onclick="LoginClick();" class="button">
+                        Login
+                    </button>
+                </button>
+                {% endif %}
+            </div>
+        </nav>
+        <div class="sidebar">
+            <div class="sidebartop">
+                <h4>Messages</h4>
+                <div style="margin: 0; text-align: right; margin-right: 13px; position: fixed; top: 0.5px; right: 13px">
+                    <div class="online_background">
+                        <h2 id="online" className="nocopy">0</h2>
+                        <div class="online_animation"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="chatholder">
+            </div>
+            <div class="sidebarbottom">
+                {% if logged_in %}
+                    <input onchange="SendChatMessage();" id="chatmessage" placeholder="Enter Chat Message.." class="textboxinvisible">
+                {% else %}
+                    <input readonly id="chatmessage" placeholder="You must login to chat" class="textboxinvisible">
+                {% endif %}
+            </div>
+        </div>
+        <div class="main">
+            <div class="maintop">
+                <div class="maintopvalue">
+                    <h1>0</h1>
+                    <h2>Total Gems</h2>
+                </div>
+                <div class="maintopvalue">
+                    <h1>0</h1>
+                    <h2>Total Games</h2>
+                </div>
+                <div class="maintopvalue">
+                    <h1>0</h1>
+                    <h2>Joinable</h2>
+                </div>
+                <div class="maintopvalue">
+                    <button class="button">Create</button>
+                </div>
+            </div>
+            <div class="mainbottom">
+                <div class="mainbottomitem">
+                    <div>
+                        <img class="userprofile active" src="https://tr.rbxcdn.com/30DAY-AvatarHeadshot-E86217B48314CB22DC34D9868F3956C9-Png/150/150/AvatarHeadshot/Png/noFilter">
+                        <img class="userprofile" src="https://tr.rbxcdn.com/30DAY-AvatarHeadshot-E86217B48314CB22DC34D9868F3956C9-Png/150/150/AvatarHeadshot/Png/noFilter">
+                    </div>
+                    <div class="info-section">
+                        <svg style="margin-top: 42px; margin-right: 5px;" class="svghover" fill="var(--color-primary)" stroke="var(--color-primary)" stroke-width="25px" viewBox="0 0 680 512" height="25em" width="1.5em" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="var(--color-primary)" d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z"></path>
+                        </svg>
+                        <h2 style="margin-bottom: 27.5px; margin-right: 50px; color: var(--color-text2nd);">999M</h2>
+                        <button class="button">Join</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
