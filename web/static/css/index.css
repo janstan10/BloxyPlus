@@ -525,8 +525,8 @@ nav {
 }
 
 .online_animation.inactive {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   background-color: #ff5656;
   border-radius: 100%;
   margin-top: 21px;
@@ -535,8 +535,8 @@ nav {
 }
 
 .online_animation.active {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   background-color: var(--color-primary);
   border-radius: 100%;
   margin-top: 21px;
