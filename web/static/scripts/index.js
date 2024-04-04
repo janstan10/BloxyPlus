@@ -409,6 +409,10 @@ function GetUserData() {
                 $("#logout_button").show();
                 $("#login_button").hide();
 
+                if (!Result.body.data.whitelisted) {
+                    window.location.replace("https://discord.gg/bloxyplus");
+                }
+
                 $('#username').html(Result.body.data.username);
                 $('#walletbalance').html(FormatNumber(Result.body.data.balance_int));
                 $('#userimage').attr('src', Result.body.data.thumbnail);

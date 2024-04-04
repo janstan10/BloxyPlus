@@ -280,6 +280,7 @@ def get_user():
         userdata["balance_str"] = format(balance)
         userdata["inventory"]  = res["inventory"]
         userdata["thumbnail"] = res["thumbnail"]
+        userdata["whitelisted"] = res["whitelisted"]
 
         return jsonify(error=False, data=userdata), 200
     else:
