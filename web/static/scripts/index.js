@@ -1,11 +1,10 @@
 let LoginUsername = null;
+let LoggedIn = false;
 let LoginCode = null;
-let GameChoice = "heads";
-let CurrentGameID = null;
-const SelectedItems = [];
+let SelectedItems = [];
 
-var games_socket = io.connect('https://bloxyplus.com/games');
 var site_socket = io.connect('https://bloxyplus.com/site');
+//var site_socket = io.connect('http://127.0.0.1:8000/site');
 
 site_socket.on('users_added', function(data) {
     $("#online_animation").removeClass("inactive")
@@ -20,275 +19,84 @@ site_socket.on('message_sent', function(data) {
     var sanitizedMessage = DOMPurify.sanitize(data.message);
 
     var message = `
-        <div class="chatmessage">
-            <div style="width: 100%;  overflow: auto; display: flex; flex-direction: column;">
-                <div style="margin-bottom: 0; display: flex; align-items: center;">
-                    <img class="hoverimg transparent" style="margin-top: 12px; margin-right: 10px; width: 45px; height: 45px;" src="${sanitizedThumbnail}">
-                    <h3 class="texthover" style="font-size: 18px; margin-top: 30px; text-align: right;">${sanitizedUsername}</h3>
-                </div>
-                <h3 style="font-size: 16px; font-weight: 500; margin-top: -5px;">${sanitizedMessage}</h3>
-            </div>                
+        <div class="chatbar_message">
+            <img class="user_profile" src="${sanitizedThumbnail}">
+            <div>
+                <p style="font-weight: bold; font-size: 20px;">${sanitizedUsername}</p>
+                <p>${sanitizedMessage}</p>
+            </div>
         </div>
     `;
 
     var $message = $(message);
-    $("#chatmessages").prepend($message);
+    var $message = $(message);
+    $("#chatbar_messages").prepend($message);
+    $("#chatbar_messages").scrollTop($("#chatbar_messages")[0].scrollHeight);
 });
 
-games_socket.on('game_ended', function(data) {
-    $("#" + data.gid + "_headsimg").attr('src', data.heads.thumbnail);
-    $("#" + data.gid + "_headsname").text(data.heads.username)
-    $("#" + data.gid + "_tailsimg").attr('src', data.tails.thumbnail);
-    $("#" + data.gid + "_tailsname").text(data.tails.username)
-    setTimeout(() => {
-        $("#" + data.gid + "_coin").addClass("animate-" + data.winner);
-    }, 3000);
-    setTimeout(() => {
-        $("#" + data.gid + "_" + data.winner + "img").addClass("active");
-    }, 5500);
-
-    $("#" + data.gid).remove();
-    let wonValue = 0;
-    var gameItem = $('<div id="' + data.gid + '" class="gameitem"></div>');
-    var imagesDiv = $('<div id="images" style="overflow: hidden; display: flex; margin-right: auto; white-space: nowrap;"></div>');
-    var activeSide = data.heads.username !== null ? data.heads : data.tails;
-    var usersDiv = $('<div id="users"></div>');
-
-    data.heads.pets.forEach(function (pet) {
-        wonValue = wonValue + pet.value
-    })
-
-    data.tails.pets.forEach(function (pet) {
-        wonValue = wonValue + pet.value
-    })
-
-    var heads = $('<img class="hoverimg" style="width: 45px; height: 45px;" src="' + (data.heads.thumbnail === null ? '../static/img/heads.png' : data.heads.thumbnail) + '">');
-    var tails = $('<img class="hoverimg" style="margin-left: 5px; width: 45px; height: 45px;" src="' + (data.tails.thumbnail === null ? '../static/img/tails.png' : data.tails.thumbnail) + '">');  
-                
-    usersDiv.append(heads);
-    usersDiv.append(tails);
-
-    if (data.winner === "heads") {
-        heads.addClass("hoverimg active");
-    } else if (data.winner === "tails") {
-        tails.addClass("hoverimg active");
+function FormatNumber(num, precision = 1) {
+    const map = [
+      { suffix: 'T', threshold: 1e12 },
+      { suffix: 'B', threshold: 1e9 },
+      { suffix: 'M', threshold: 1e6 },
+      { suffix: 'K', threshold: 1e3 },
+      { suffix: '', threshold: 1 },
+    ];
+  
+    const found = map.find((x) => Math.abs(num) >= x.threshold);
+    if (found) {
+      const formatted = (num / found.threshold).toFixed(precision) + found.suffix;
+      return formatted;
     }
+  
+    return num;
+}
 
-    imagesDiv.append(usersDiv);
-    var itemsDiv = $('<div id="items" style="margin-left: 75px;"></div>');
+function GetColor(imageUrl, callback) {
+    var img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var pixels = imageData.data;
 
-    if (data.winner != null) {
-        for (var i = 0; i < Math.min(data.heads.pets.length, 2); i++) {
-            itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
+        var colorMap = {};
+        var tolerance = 40;
+
+        for (var i = 0; i < pixels.length; i += 4) {
+            var r = pixels[i];
+            var g = pixels[i + 1];
+            var b = pixels[i + 2];
+
+            var isCloseToWhite = r > 255 - tolerance && g > 255 - tolerance && b > 255 - tolerance;
+            var isCloseToBlack = r < tolerance && g < tolerance && b < tolerance;
+
+            var color = 'rgb(' + r + ',' + g + ',' + b + ')';
+            
+            if (!isCloseToWhite && !isCloseToBlack) {
+                if (colorMap[color]) {
+                    colorMap[color]++;
+                } else {
+                    colorMap[color] = 1;
+                }
+            }
         }
-
-        for (var i = 0; i < Math.min(data.tails.pets.length, 2); i++) {
-            itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
+        
+        var maxCount = 0;
+        var dominantColor = '';
+        for (var key in colorMap) {
+            if (colorMap[key] > maxCount) {
+                maxCount = colorMap[key];
+                dominantColor = key;
+            }
         }
-    } else {
-        for (var i = 0; i < Math.min(activeSide.pets.length, 4); i++) {
-            itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
-        }
-    }
-
-    if (data.winner == null) {
-        var remainingItems = activeSide.pets.length - 4;
-    } else {
-        var remainingItems = (data.heads.pets.length + data.tails.pets.length) - 4;
-    }
-
-    imagesDiv.append(itemsDiv);
-
-    if (remainingItems > 0) {
-        imagesDiv.append('<h2 id="remainingitems" style="margin: 0; margin-top: 7px; margin-left: 5px;">+' + remainingItems + '</h2>');
-    }
-
-    gameItem.append(imagesDiv);
-
-    var joinDiv = $('<div id="join" style="display: flex; position: relative; right: 22px;"></div>');
-    var valueDiv = $('<div></div>');
-
-    if (data.winner == null) {
-        valueDiv.append('<h2 style="text-align: center; color: var(--color-primary); margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value)) + '</h2>');
-        valueDiv.append('<h4 style="text-align: center; margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value * 0.9)) + ' - $' + (FormatNumber(data.value * 1.1)) + '</h4>');
-    } else {
-        valueDiv.append('<h2 style="text-align: center; color: var(--color-primary); margin: 0; margin-right: 25px;">$' + (FormatNumber(wonValue)) + '</h2>');
-        valueDiv.append('<h4 style="text-align: center; margin: 0; margin-right: 25px;">$' + (FormatNumber(wonValue * 0.9)) + ' - $' + (FormatNumber(wonValue * 1.1)) + '</h4>');
-    }
-
-    if (data.active == true) {
-        var joinButton = $('<button style="width: 100px;" class="button">Join</button>');
-        joinButton.click(function () {
-            CurrentGameID = data.gid;
-            InventoryClick('#inventoryjoinbutton');
-        });
-    } else {
-        var joinButton = $('<button style="width: 100px;" class="button secondary2">Join</button>');
-        joinButton.click(function () {
-            Notification("The game has already ended!", "Error", 3000);
-        });
-    }
-
-    joinDiv.append(valueDiv);
-    joinDiv.append(joinButton);
-
-    gameItem.append(joinDiv);
-
-    $('#gameholder').append(gameItem);
-
-    joinDiv.append(`<button onclick="ShowPopup('${('#' + data.gid + '_popup')}')" style="margin-left: 10px; width: 100px;" class="button">View</button>`);
-})
-
-games_socket.on('game_created', function(data) {
-    var gameItem = $('<div id="' + data.gid + '" class="gameitem"></div>');
-    var imagesDiv = $('<div id="images" style="overflow: hidden; display: flex; margin-right: auto; white-space: nowrap;"></div>');
-    var activeSide = data.heads.username !== null ? data.heads : data.tails;
-
-    var usersDiv = $('<div id="users"></div>');
-    usersDiv.append('<img class="hoverimg" style="width: 45px; height: 45px;" src="' + (data.heads.thumbnail === null ? '../static/img/heads.png' : data.heads.thumbnail) + '">');
-    usersDiv.append('<img class="hoverimg" style="margin-left: 5px; width: 45px; height: 45px;" src="' + (data.tails.thumbnail === null ? '../static/img/tails.png' : data.tails.thumbnail) + '">');
-    imagesDiv.append(usersDiv);
-
-    var itemsDiv = $('<div id="items" style="margin-left: 75px;"></div>');
-
-    for (var i = 0; i < Math.min(activeSide.pets.length, 4); i++) {
-        itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
-    }
-
-    var remainingItems = activeSide.pets.length - 4;
-
-    imagesDiv.append(itemsDiv);
-
-    if (remainingItems > 0) {
-        imagesDiv.append('<h2 id="remainingitems" style="margin: 0; margin-top: 7px; margin-left: 5px;">+' + remainingItems + '</h2>');
-    }
-
-    gameItem.append(imagesDiv);
-
-    var joinDiv = $('<div id="join" style="display: flex; position: relative; right: 22px;"></div>');
-    var valueDiv = $('<div></div>');
-
-    valueDiv.append('<h2 style="text-align: center; color: var(--color-primary); margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value)) + '</h2>');
-    valueDiv.append('<h4 style="text-align: center; margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value * 0.9)) + ' - $' + (FormatNumber(data.value * 1.1)) + '</h4>');
-
-    var joinButton = $('<button style="width: 100px;" class="button">Join</button>');
-    joinButton.click(function () {
-        CurrentGameID = data.gid;
-        InventoryClick('#inventoryjoinbutton');
-    });
-
-    joinDiv.append(valueDiv);
-    joinDiv.append(joinButton);
-
-    gameItem.append(joinDiv);
-
-    $('#gameholder').append(gameItem);
-
-    const headsimg = (data.heads.thumbnail === null ? '../static/img/heads.png' : data.heads.thumbnail);
-    const tailsimg = (data.tails.thumbnail === null ? '../static/img/tails.png' : data.tails.thumbnail);
-    const headsname = (data.heads.username === null ? 'Waiting..' : data.heads.username);
-    const tailsname = (data.tails.username === null ? 'Waiting..' : data.tails.username);
-    const headsclass = (data.winner == null ? "hoverimg" : "hoverimg active")
-    const tailsclass = (data.winner == null ? "hoverimg" : "hoverimg active")
-
-    var popup = `
-        <div id="${(data.gid + "_popup")}" class="popup">
-            <div onclick="HidePopup('${("#" + data.gid + "_popup")}');" class="popupclose">
-                <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <path d="M18 6 6 18"></path>
-                    <path d="m6 6 12 12"></path>
-                </svg>
-            </div>
-            <div style="left: 50%; transform: translateX(-50%); width: 80%; display: flex; align-items: center; height: 100%; position: relative; text-align: center;">
-                <div style="position: absolute; left: 25px; margin-bottom: 25px;">
-                    <img id='${(data.gid + "_headsimg")}' class="${headsclass}" style="width: 100px; height: 100px;" src="${headsimg}">
-                    <h4 id='${(data.gid + "_headsname")}' style="margin: 0; margin-top: 5px;">${headsname}</h4>
-                    <img style="position: absolute; bottom: 0; left: 0; width: 25px; height: 25px;" src="../static/img/heads.png">
-                </div>
-                <div style="position: absolute; right: 25px; margin-bottom: 25px;">
-                    <img id='${(data.gid + "_tailsimg")}' class=${tailsclass} style="width: 100px; height: 100px;" src="${tailsimg}">
-                    <h4 id='${(data.gid + "_tailsname")}' style="margin: 0; margin-top: 5px;">${tailsname}</h4>
-                    <img style="position: absolute; bottom: 0; left: 0; width: 25px; height: 25px;" src="../static/img/tails.png">
-                </div>
-                <div style="position: absolute; left: 50%; transform: translateX(-50%);">
-                    <div id="${(data.gid + "_coin")}" class='coin'>
-                        <div id="heads" class="heads"></div>
-                        <div id="tails" class="tails"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `
-
-    $('body').append(popup);
-
-    joinDiv.append(`<button onclick="ShowPopup('${('#' + data.gid + '_popup')}')" style="margin-left: 10px; width: 100px;" class="button">View</button>`);
-});
-
-function Copy(Text) {
-    navigator.clipboard.writeText(Text);
-}
-
-function Refresh() {
-    location.reload();
-}
-
-function ShowPopup(ID) {
-    $('[id$="popup"]').hide();
-    
-    $(ID).animate({
-        top: '50%',
-        opacity: 'show'
-    }, 500);
-}
-
-function HidePopup(ID) {
-    $(ID).css({
-        top: '55%'
-    }).hide();
-}
-
-function InventoryClick(btn) {
-    $("#inventoryloading").show();
-    $("#inventorywithdrawbutton").hide();
-    $("#inventorycreatebutton").hide();
-    $("#inventoryjoinbutton").hide();
-    $(btn).show();
-
-    GetInventory();
-}
-
-function HomeButtonClick() {
-    $('#chatbar').hide(); 
-    $('#homebottom').toggleClass('active'); 
-    $('#chatbottom').removeClass('active'); 
-    $('#gamesbottom').removeClass('active');
-}
-
-function GamesButtonClick() {
-    $('#chatbar').hide(); 
-    $('#gamesbottom').toggleClass('active'); 
-    $('#chatbottom').removeClass('active'); 
-    $('#homebottom').removeClass('active');
-}
-
-function ChatButtonClick() {
-    $('#chatbar').toggle(); 
-    $('#chatbottom').toggleClass('active'); 
-    $('#gamesbottom').removeClass('active'); 
-    $('#homebottom').removeClass('active');
-}
-
-function FormatNumber(value) {
-    const suffixes = ["", "K", "M", "B", "T"];
-    let suffixIndex = 0;
-
-    while (value >= 1000 && suffixIndex < suffixes.length - 1) {
-        value /= 1000;
-        suffixIndex++;
-    }
-
-    return value.toFixed(1) + suffixes[suffixIndex];
+        callback(dominantColor);
+    };
+    img.src = imageUrl;
 }
 
 function Notification(text = "Success", type = "Success", duration = 3000) {
@@ -349,289 +157,40 @@ function Notification(text = "Success", type = "Success", duration = 3000) {
     }
 }
 
-function SelectCoin(choice = "heads") {
-    if (choice === "heads") {
-        $('#headsselect, #tailsselect').removeClass('dark');
-        $("#tailsselect").addClass('dark');
-        GameChoice = "heads"
-    } else {
-        $('#headsselect, #tailsselect').removeClass('dark');
-        $("#headsselect").addClass('dark');
-        GameChoice = "tails"
-    }
+function Copy(Text) {
+    navigator.clipboard.writeText(Text);
 }
 
-function DepositClick() {
-    ShowPopup("#depositpopup");
+function Refresh() {
+    location.reload();
 }
 
-function WithdrawClick() {
-    superagent.post("/api/user/withdraw")
-        .send({
-            "items": SelectedItems
-        })
-        .end((Error, Result) => {
-            if (Error) {
-                console.log(Error);
-            }
-
-            if (Result.body.error === true) {
-                Notification(Result.body.message, "Error", 3000);
-                return;
-            }
-
-            Notification(Result.body.message, "Success", 3000);
-            HidePopup("#inventorypopup");
-            GetInventory();
-        });
-    }
-
-function GetGames() {
-    superagent.get("/api/coinflip/get")
-        .end((Error, Result) => {
-            if (Error) {
-                console.log(Error);
-            }
-
-            if (Result.body.error) {
-                Notification(Result.body.message, "Error", 3000);
-                return;
-            }
-
-            Result.body.games.forEach(function (data) {
-                let wonValue = 0;
-                var gameItem = $('<div id="' + data.gid + '" class="gameitem"></div>');
-                var imagesDiv = $('<div id="images" style="overflow: hidden; display: flex; margin-right: auto; white-space: nowrap;"></div>');
-                var activeSide = data.heads.username !== null ? data.heads : data.tails;
-                var usersDiv = $('<div id="users"></div>');
-
-                data.heads.pets.forEach(function (pet) {
-                    wonValue = wonValue + pet.value
-                })
-
-                data.tails.pets.forEach(function (pet) {
-                    wonValue = wonValue + pet.value
-                })
-
-                var heads = $('<img class="hoverimg" style="width: 45px; height: 45px;" src="' + (data.heads.thumbnail === null ? '../static/img/heads.png' : data.heads.thumbnail) + '">');
-                var tails = $('<img class="hoverimg" style="margin-left: 5px; width: 45px; height: 45px;" src="' + (data.tails.thumbnail === null ? '../static/img/tails.png' : data.tails.thumbnail) + '">');
-                
-                
-                usersDiv.append(heads);
-                usersDiv.append(tails);
-
-                if (data.winner === "heads") {
-                    heads.addClass("hoverimg active");
-                } else if (data.winner === "tails") {
-                    tails.addClass("hoverimg active");
-                }
-
-                imagesDiv.append(usersDiv);
-                var itemsDiv = $('<div id="items" style="margin-left: 75px;"></div>');
-
-                if (data.winner != null) {
-                    for (var i = 0; i < Math.min(data.heads.pets.length, 2); i++) {
-                        itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
-                    }
-
-                    for (var i = 0; i < Math.min(data.tails.pets.length, 2); i++) {
-                        itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
-                    }
-                } else {
-                    for (var i = 0; i < Math.min(activeSide.pets.length, 4); i++) {
-                        itemsDiv.append('<img class="hoverimg" style="margin-left: -20px; width: 45px; height: 45px;" src="https://' + document.domain + "/image?url=" + activeSide.pets[i].image + '">');
-                    }
-                }
-
-                if (data.winner == null) {
-                    var remainingItems = activeSide.pets.length - 4;
-                } else {
-                    var remainingItems = (data.heads.pets.length + data.tails.pets.length) - 4;
-                }
-
-                imagesDiv.append(itemsDiv);
-
-                if (remainingItems > 0) {
-                    imagesDiv.append('<h2 id="remainingitems" style="margin: 0; margin-top: 7px; margin-left: 5px;">+' + remainingItems + '</h2>');
-                }
-
-                gameItem.append(imagesDiv);
-
-                var joinDiv = $('<div id="join" style="display: flex; position: relative; right: 22px;"></div>');
-                var valueDiv = $('<div></div>');
-
-                if (data.winner == null) {
-                    valueDiv.append('<h2 style="text-align: center; color: var(--color-primary); margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value)) + '</h2>');
-                    valueDiv.append('<h4 style="text-align: center; margin: 0; margin-right: 25px;">$' + (FormatNumber(data.value * 0.9)) + ' - $' + (FormatNumber(data.value * 1.1)) + '</h4>');
-                } else {
-                    valueDiv.append('<h2 style="text-align: center; color: var(--color-primary); margin: 0; margin-right: 25px;">$' + (FormatNumber(wonValue)) + '</h2>');
-                    valueDiv.append('<h4 style="text-align: center; margin: 0; margin-right: 25px;">$' + (FormatNumber(wonValue * 0.9)) + ' - $' + (FormatNumber(wonValue * 1.1)) + '</h4>');
-                }
-
-                if (data.active == true) {
-                    var joinButton = $('<button style="width: 100px;" class="button">Join</button>');
-                    joinButton.click(function () {
-                        CurrentGameID = data.gid;
-                        InventoryClick('#inventoryjoinbutton');
-                    });
-                } else {
-                    var joinButton = $('<button style="width: 100px;" class="button secondary2">Join</button>');
-                    joinButton.click(function () {
-                        Notification("The game has already ended!", "Error", 3000);
-                    });
-                }
-
-                joinDiv.append(valueDiv);
-                joinDiv.append(joinButton);
-
-                gameItem.append(joinDiv);
-
-                $('#gameholder').append(gameItem);
-
-                const headsimg = (data.heads.thumbnail === null ? '../static/img/heads.png' : data.heads.thumbnail);
-                const tailsimg = (data.tails.thumbnail === null ? '../static/img/tails.png' : data.tails.thumbnail);
-                const headsname = (data.heads.username === null ? 'Waiting..' : data.heads.username);
-                const tailsname = (data.tails.username === null ? 'Waiting..' : data.tails.username);
-                const headsclass = (data.winner === "heads" ? "hoverimg active" : "hoverimg");
-                const tailsclass = (data.winner === "tails" ? "hoverimg active" : "hoverimg");
-                const coinclass = (data.winner == null ? "coin" : "coin animate-" + data.winner)
-
-                var popup = `
-                    <div id="${(data.gid + "_popup")}" class="popup">
-                        <div onclick="HidePopup('${("#" + data.gid + "_popup")}');" class="popupclose">
-                            <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                            </svg>
-                        </div>
-                        <div style="left: 50%; transform: translateX(-50%); width: 80%; display: flex; align-items: center; height: 100%; position: relative; text-align: center;">
-                            <div style="position: absolute; left: 25px; margin-bottom: 25px;">
-                                <img id="${(data.gid + "_headsimg")}" class="${headsclass}" style="width: 100px; height: 100px;" src="${headsimg}">
-                                <h4 id="${(data.gid + "_headsname")}" style="margin: 0; margin-top: 5px;">${headsname}</h4>
-                                <img style="position: absolute; bottom: 0; left: 0; width: 25px; height: 25px;" src="../static/img/heads.png">
-                            </div>
-                            <div style="position: absolute; right: 25px; margin-bottom: 25px;">
-                                <img id="${(data.gid + "_tailsimg")}" class="${tailsclass}" style="width: 100px; height: 100px;" src="${tailsimg}">
-                                <h4 id="${(data.gid + "_tailsname")}" style="margin: 0; margin-top: 5px;">${tailsname}</h4>
-                                <img style="position: absolute; bottom: 0; left: 0; width: 25px; height: 25px;" src="../static/img/tails.png">
-                            </div>
-                            <div style="position: absolute; left: 50%; transform: translateX(-50%);">
-                                <div id="${(data.gid + "_coin")}" class="${coinclass}">
-                                    <div id="heads" class="heads"></div>
-                                    <div id="tails" class="tails"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `
-
-                $('body').append(popup);
-
-                joinDiv.append(`<button onclick="ShowPopup('${('#' + data.gid + '_popup')}')" style="margin-left: 10px; width: 100px;" class="button">View</button>`);
-            });
-
-            $("#gamesloading").hide();
-        });
+function ShowPopup(ID) {
+    $('[class$="popup"]').hide();
+    $("#modal_background").show();
+    
+    $("#" + ID).animate({
+        top: '50%',
+        opacity: 'show'
+    }, 500);
 }
 
-function GetInventory() {
-    const inventoryHolder = $('#inventoryholder');
-    const inventoryData = $('#inventorydata');
-    const walletBalance = $('#walletbalance');
-    inventoryHolder.html('');
-    inventoryData.text("Balance: 0 | Items: 0");
-    SelectedItems.length = 0;
-    ShowPopup("#inventorypopup");
-
-    superagent.get("/api/user/inventory")
-        .end((Error, Result) => {
-            if (Error) {
-                console.log(Error);
-                HidePopup("#inventorypopup");
-            }
-
-            if (Result.body.error) {
-                Notification(Result.body.message, "Error", 3000);
-                HidePopup("#inventorypopup");
-                return;
-            }
-            
-            $("#inventoryloading").hide()
-            const Items = Result.body.data.inventory;
-
-            const inventoryHolder = $('#inventoryholder');
-            inventoryHolder.html('');
-
-            $.each(Items, function (index, item) {
-                const itemDiv = $('<div>').addClass('inventoryslot');
-
-                const img = $('<img>').attr('src', 'https://' + document.domain + "/image?url=" + item.image);
-
-                const name = $('<h4>').css({
-                    margin: '0',
-                    padding: '0',
-                    lineHeight: 'normal',
-                    fontFamily: 'Poppins, sans-serif'
-                }).text(item.name);
-
-                const value = $('<h2>').css({
-                    color: 'var(--color-primary)',
-                    margin: '0',
-                    padding: '0',
-                    lineHeight: 'normal',
-                    fontFamily: 'Poppins, sans-serif'
-                }).text(`$${FormatNumber(item.value.toFixed(2))}`);
-
-                itemDiv.click(function () {
-                    if (itemDiv.hasClass('active')) {
-                        const selectedIndex = SelectedItems.indexOf(item);
-                        SelectedItems.splice(selectedIndex, 1);
-                        itemDiv.removeClass('active');
-                    } else {
-                        SelectedItems.push(item);
-                        itemDiv.addClass('active');
-                    }
-                });
-
-                itemDiv.append(img);
-                itemDiv.append(name);
-                itemDiv.append(value);
-
-                inventoryHolder.append(itemDiv);
-            });
-
-            const Worth = Result.body.data.balance;
-            const Total = Result.body.data.items;
-            
-            walletBalance.text(`${FormatNumber(Worth.toFixed(2))}`)
-            inventoryData.text(`Balance: $${FormatNumber(Worth.toFixed(2))} | Items: ${Total}`);
-        });
+function HidePopup(ID) {
+    $("#modal_background").hide();
+    $("#" + ID).css({
+        top: '55%'
+    }).hide();
 }
 
-function SendMessage() {
-    var message = $("#chatmessage").val();
+function WalletClick(ID) {
+    SelectedItems = [];
+    $('#wallet_modal [id$="_click"]').hide();
+    $("#" + ID).show();
+    ShowPopup("wallet_modal");
+    GetInventory();
+}
 
-    if (message === "") {
-        return Notification("Please enter a chat message", "Error", 3000);
-    }
-
-    superagent.post("/api/chat/send")
-        .send({
-            "message": DOMPurify.sanitize(message)
-        })
-        .end((Error, Result) => {
-            if (Error) {
-                console.log(Error);
-            }
-
-            if (Result.body.error === true) {
-                Notification(Result.body.message, "Error", 3000);
-                return;
-            }
-        });
-    }
-
-function GetMessages() {
+function GetChatMessages() {
     superagent.get("/api/chat/get")
         .end((Error, Result) => {
             if (Error) {
@@ -645,68 +204,89 @@ function GetMessages() {
     
             Result.body.messages.forEach(function (data) {
                 var message = `
-                    <div class="chatmessage">
-                        <div style="width: 100%;  overflow: auto; display: flex; flex-direction: column;">
-                            <div style="margin-bottom: 0; display: flex; align-items: center;">
-                                <img class="hoverimg transparent" style="margin-top: 12px; margin-right: 10px; width: 45px; height: 45px;" src="${data.thumbnail}">
-                                <h3 class="texthover" style="font-size: 18px; margin-top: 30px; text-align: right;">${data.username}</h3>
-                            </div>
-                            <h3 style="font-size: 16px; font-weight: 500; margin-top: -5px;">${data.message}</h3>
-                        </div>                
+                    <div class="chatbar_message">
+                        <img class="user_profile" src="${data.thumbnail}">
+                        <div>
+                            <p style="font-weight: bold; font-size: 20px;">${data.username}</p>
+                            <p>${data.message}</p>
+                        </div>
                     </div>
-                `
+                `;
 
                 var $message = $(message);
-                $("#chatmessages").prepend($message);
+                $("#chatbar_messages").prepend($message);
+                $("#chatbar_messages").scrollTop($("#chatbar_messages")[0].scrollHeight);
             });
         });
 }
 
-function CreateGame() {
-    superagent.post("/api/coinflip/create")
-        .send({
-            "items": SelectedItems,
-            "choice": GameChoice
-        })
-        .end((Error, Result) => {
-            if (Error) {
-                console.log(Error);
-            }
-
-            if (Result.body.error === true) {
-                Notification(Result.body.message, "Error", 3000);
-                return;
-            }
-
-            Notification(Result.body.message, "Success", 3000);
-            HidePopup("#inventorypopup");
-        });
+function GetInventory() {
+    if (LoggedIn !== true) {
+        Notification("You are not logged in!", "Error", 3000);
+        HidePopup("wallet_modal");
+        return;
     }
 
-function JoinGame() {
-    superagent.post("/api/coinflip/join")
-        .send({
-            "items": SelectedItems,
-            "gid": CurrentGameID
-        })
+    $("#wallet_holder").children().not("#wallet_load").remove();
+    $("#wallet_load").show();
+
+    superagent.get("/api/user/inventory")
         .end((Error, Result) => {
             if (Error) {
                 console.log(Error);
+                return;
             }
 
-            if (Result.body.error === true) {
+            if (Result.body.error) {
                 Notification(Result.body.message, "Error", 3000);
                 return;
             }
 
-            Notification(Result.body.message, "Success", 3000);
-            HidePopup("#inventorypopup");
-            ShowPopup("#" + CurrentGameID + "_popup");
-        });
-    }  
+            $.each(Result.body.data.inventory, function(index, pet) {
+                const $pet = $('<div>').addClass('wallet_item');
+                const $img = $('<img>').attr('src', pet.thumbnail);
+                const $name = $('<p>').text(pet.name);
+                const $value = $('<h3>').text('$' + FormatNumber(pet.value));
 
-function LoginButton1Click() {
-    var username = $("#loginusername").val();
+                var $color = NaN;
+
+                GetColor("http://127.0.0.1:8000/image?url=" + pet.thumbnail, function(dominantColor) {
+                    $color = dominantColor
+                });
+
+                $pet.append($img);
+                $pet.append($name);
+                $pet.append($value);
+
+                $pet.click(function() {
+                    if ($pet.hasClass('active')) {
+                        const selectedIndex = SelectedItems.indexOf(pet);
+                        SelectedItems.splice(selectedIndex, 1);
+                        $pet.css({
+                            'border': '2px solid var(--color-border)',
+                            'border-bottom': '10px solid var(--color-border)'
+                        });
+                        $pet.removeClass('active');
+                    } else {
+                        SelectedItems.push(pet);
+                        $pet.css({
+                            'border': '2px solid ' + '#3577FC',
+                            'border-bottom': '10px solid ' + '#3577FC'
+                        });
+                        $pet.addClass('active');
+                    }
+                });
+
+                $("#wallet_holder").append($pet);
+            });
+
+            $('#walletbalance').html(FormatNumber(Result.body.data.balance));
+            $("#wallet_load").hide();
+        });
+}
+
+function LoginModal1Click() {
+    var username = $("#login_modal_1_username").val();
 
     if (username === "") {
         return Notification("Please enter your username first", "Error", 3000);
@@ -728,13 +308,13 @@ function LoginButton1Click() {
 
             LoginUsername = username
             LoginCode = Result.body.phrase
-            $("#loginphrase").val(LoginCode);
-            HidePopup("#loginpopup");
-            ShowPopup("#loginpopup2");
+            $("#login_modal_2_phrase").val(LoginCode);
+            HidePopup("login_modal_1");
+            ShowPopup("login_modal_2");
         });
 }
 
-function LoginButton2Click() {
+function LoginModal2Click() {
     superagent.post("/api/login/check")
         .send({
             "username": LoginUsername
@@ -752,14 +332,276 @@ function LoginButton2Click() {
 
             LoginUsername = ""
             LoginCode = ""
-            $("#loginphrase").val(LoginCode);
-            HidePopup("#loginpopup2");
+            HidePopup("login_modal_2");
             Refresh();
             Notification("Successfully Logged in", "Success", 3000);
         });
 }
 
+function SendChatMessageClick() {
+    if (LoggedIn !== true) {
+        Notification("You are not logged in!", "Error", 3000);
+    }
+
+    var message = $("#chatbar_input").val();
+
+    if (message === "") {
+        return Notification("Please enter a chat message", "Error", 3000);
+    }
+
+    $("#chatbar_input").val("");
+
+    superagent.post("/api/chat/send")
+        .send({
+            "message": DOMPurify.sanitize(message)
+        })
+        .end((Error, Result) => {
+            if (Error) {
+                console.log(Error);
+            }
+
+            if (Result.body.error === true) {
+                Notification(Result.body.message, "Error", 3000);
+                return;
+            }
+        });
+    }
+
+function WithdrawPets() {
+    superagent.post("/api/user/withdraw")
+        .send({
+            "items": SelectedItems
+        })
+        .end((Error, Result) => {
+            if (Error) {
+                console.log(Error);
+            }
+
+            if (Result.body.error === true) {
+                Notification(Result.body.message, "Error", 3000);
+                return;
+            }
+            
+            Notification(Result.body.message, "Success", 3000);
+        });
+}
+
+function GetUserData() {
+    superagent.get("/api/user/get")
+        .end((Error, Result) => {
+            if (Error) {
+                console.log(Error);
+            }
+
+            if (Result.body.error) {
+                Notification(Result.body.message, "Error", 3000);
+                return;
+            }
+
+            if (Result.body.message === "User not logged in") {
+                $("#wallet").hide();
+                $("#user_profile").hide();
+                $("#logout_button").hide();
+                $("#login_button").show();
+            } else {
+                $("#wallet").show();
+                $("#user_profile").show();
+                $("#logout_button").show();
+                $("#login_button").hide();
+
+                $('#username').html(Result.body.data.username);
+                $('#walletbalance').html(FormatNumber(Result.body.data.balance_int));
+                $('#userimage').attr('src', Result.body.data.thumbnail);
+                LoggedIn = true;
+            }
+        });
+}
+
+function GetAffiliateCode() {
+    if (LoggedIn !== true) {
+        Notification("You are not logged in!", "Error", 3000);
+        HidePopup("affiliates_modal");
+    }
+
+    superagent.get("/api/affiliates/get")
+        .end((Error, Result) => {
+            if (Error) {
+                console.log(Error);
+            }
+
+            if (Result.body.error) {
+                Notification(Result.body.message, "Error", 3000);
+                return;
+            }
+
+            $("#affiliates_modal_link").val(Result.body.code)
+    });
+}
+
+function GetLeaderboard() {
+    $("#leaderboard_load").show()
+    $("#leaderboard_holder").hide()
+    $("#leaderboard_holder").children().not("#leaderboard_stats").remove();
+
+    superagent.get("/api/leaderboard/get")
+        .end((Error, Result) => {
+            if (Error) {
+                console.log(Error);
+            }
+
+            if (Result.body.error) {
+                Notification(Result.body.message, "Error", 3000);
+                return;
+            }
+
+            $.each(Result.body.leaderboard, function(index, data) {
+                $user = `
+                    <div class="leaderboard_item">
+                        <img class="user_profile" src="${data.thumbnail}">
+                        <p style="margin-left: 5px;">${data.name}</p>
+                        <div class="leaderboard_profit">
+                            <svg style="margin-top: 16px;" xmlns="http://www.w3.org/2000/svg" width="32" height="20" fill="var(--color-primary)" class="bi bi-house-door-fill" viewBox="0 00 16 16">
+                                <path fill-rule="evenodd" d="M6.95.435c.58-.58 1.52-.58 2.1 0l6.515 6.516c.58.58.58 1.519 0 2.098L9.05 15.565c-.58.58-1.519.58-2.098 0L.435 9.05a1.48 1.48 0 0 1 0-2.098z"/>
+                            </svg>
+                            <p style="color: var(--color-primary)">${FormatNumber(data.profit)}</p>
+                        </div>
+                    </div>
+                `
+
+                $("#leaderboard_holder").append($user)
+            })
+
+            $("#leaderboard_load").hide()
+            $("#leaderboard_holder").show()
+        });
+}
+
 $(document).ready(function () {
-    GetGames();
-    GetMessages();
+    // Load Data
+
+    GetChatMessages();
+    GetUserData();
+
+    // Bottom Bar
+
+    $("#bottombar_menu").on("click", function() {
+        var mainMenu = $("#mainmenu");
+        if (mainMenu.css("display") === "none") {
+            mainMenu.css("display", "flex");
+        } else {
+            mainMenu.css("display", "none");
+        }
+    });
+
+    $("#bottombar_chat").on("click", function() {
+        $("#chatbar").toggle();
+    })
+
+    $("#mobile_affiliates_button").on("click", function() {
+        $("#mainmenu").hide();
+        ShowPopup("affiliates_modal");
+        GetAffiliateCode();
+    })
+
+    $("#mobile_leaderboard_button").on("click", function() {
+        $("#mainmenu").hide();
+        ShowPopup("leaderboard_modal");
+        GetLeaderboard();
+    })
+
+    // Site Functions
+
+    $("#deposit_button").on("click", function() {
+        ShowPopup("deposit_modal");
+    })
+
+    $("#affiliates_button").on("click", function() {
+        ShowPopup("affiliates_modal");
+        GetAffiliateCode();
+    })
+    
+    $("#affiliates_click_homepage").on("click", function() {
+        ShowPopup("affiliates_modal");
+        GetAffiliateCode();
+    })
+
+    $("#leaderboard_button").on("click", function() {
+        ShowPopup("leaderboard_modal");
+        GetLeaderboard();
+    })
+
+    $("#login_button").on("click", function() {
+        ShowPopup("login_modal_1");
+    })
+
+    $("#login_button").on("click", function() {
+        ShowPopup("login_modal_1");
+    })
+
+    $("#wallet_button").on("click", function() {
+        WalletClick("withdraw_click")
+    })
+
+    $("#chatbar_send").on("click", function() {
+        SendChatMessageClick();
+    })
+
+    // Modals
+
+    // Affiliates Modal
+
+    $("#affiliates_modal_close").on("click", function() {
+        HidePopup("affiliates_modal");
+    })
+
+    $("#affiliates_modal_copy").on("click", function() {
+        Copy($("#affiliates_modal_link").val());
+        Notification("Successfully copied link!", "Success", 3000);
+    })
+
+    // Deposit Modal
+
+    $("#deposit_modal_close").on("click", function() {
+        HidePopup("deposit_modal");
+    })
+
+    // Leaderboard Modal
+
+    $("#leaderboard_modal_close").on("click", function() {
+        HidePopup("leaderboard_modal");
+    })
+
+    // Login Modal 1
+
+    $("#login_modal_1_close").on("click", function() {
+        HidePopup("login_modal_1");
+    })
+
+    $("#login_modal_1_click").on("click", function() {
+        LoginModal1Click();
+    })
+
+    // Login Modal 2
+
+    $("#login_modal_2_close").on("click", function() {
+        HidePopup("login_modal_2")
+    })
+
+    $("#login_modal_2_click").on("click", function() {
+        LoginModal2Click();
+    })
+
+    // Wallet Modal
+
+    $("#wallet_modal_close").on("click", function() {
+        HidePopup("wallet_modal");
+    })
+
+    $("#withdraw_click").on("click", function() {
+        WithdrawPets();
+    })
+
+    // Finish Loading
+
+    $("#loading_screen").hide();
 });

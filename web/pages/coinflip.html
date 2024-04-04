@@ -14,6 +14,7 @@
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
         <script type="text/javascript" src="../static/scripts/index.js"></script>
+        <script type="text/javascript" src="../static/scripts/coinflip.js"></script>
         <div id="loading_screen" style="padding: 0; opacity: 0.99; display: inline;" class="modal_background">
             <img class="loading_logo" src="../static/img/logo.png">
         </div>
@@ -32,20 +33,6 @@
                 <h4><span style="font-weight: bold;">Why do you need this?</span> We need your Roblox Username to give you a unique user profile. We will not ask for your password but will ask for you to put a set of words in your Roblox About Section to authenticate you</h4>
                 <input id="login_modal_1_username" class="login_input" placeholder="Enter your Roblox Username..">
                 <button id="login_modal_1_click" style="position: absolute; bottom: 25px; width: calc(100% - 50px)" class="button">Login</button>
-            </div>
-            <div id="affiliates_modal" class="modal">
-                <div id="affiliates_modal_close" class="modal_close">
-                    <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                        <path d="M18 6 6 18"></path>
-                        <path d="m6 6 12 12"></path>
-                    </svg>
-                </div>
-                <h1>Affiliates</h1>
-                <h4>Earn a cut whenever your friends place a bet. Terms apply</h4>
-                <h4 style="user-select: none; color: transparent">_</h4>
-                <h4><span style="font-weight: bold;">What terms apply?</span> Bet must be above 20 pets to not avoid taking too much of earnings. User must sign up for the first time with said affiliate link. User must place a total of atleast 10 bets.</h4>
-                <input id="affiliates_modal_link" readonly class="login_input" value="Loading Link..">
-                <button id="affiliates_modal_copy" style="position: absolute; bottom: 25px; width: calc(100% - 50px)" class="button">Copy</button>
             </div>
             <div id="login_modal_2" class="modal">
                 <div id="login_modal_2_close" class="modal_close">
@@ -74,9 +61,27 @@
                         <div class="loader"></div>
                     </div>
                 </div>
-                <button id="withdraw_click" class="button">Withdraw</button>
-                <button id="create_click" class="button">Create</button>
-                <button id="join_click" class="button">Join</button>
+                <button style="display: none;" id="withdraw_click" class="button">Withdraw</button>
+                <div id="create_menu" class="create_menu">
+                    <img id="heads_select" style="cursor: pointer; transition: 0.3s; width: 50px; height: 50px;" src="../static/img/headsbig.png">
+                    <img id="tails_select" class="dark" style="cursor: pointer; margin-right: 45px; margin-left: 10px; margin-bottom: 25px; transition: 0.3s; width: 50px; height: 50px;" src="../static/img/tailsbig.png">
+                    <button id="create_game_btn" style="position: relative; margin: 0; margin-top: 25px;" class="button">Create</button>
+                </div>
+                <button style="display: none;" id="join_click" class="button">Join</button>
+            </div>
+            <div id="affiliates_modal" class="modal">
+                <div id="affiliates_modal_close" class="modal_close">
+                    <svg style="cursor: pointer;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="var(--color-text1st)" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </div>
+                <h1>Affiliates</h1>
+                <h4>Earn a cut whenever your friends place a bet. Terms apply</h4>
+                <h4 style="user-select: none; color: transparent">_</h4>
+                <h4><span style="font-weight: bold;">What terms apply?</span> Bet must be above 20 pets to not avoid taking too much of earnings. User must sign up for the first time with said affiliate link. User must place a total of atleast 10 bets.</h4>
+                <input id="affiliates_modal_link" readonly class="login_input" value="Loading Link..">
+                <button id="affiliates_modal_copy" style="position: absolute; bottom: 25px; width: calc(100% - 50px)" class="button">Copy</button>
             </div>
             <div id="leaderboard_modal" class="modal leaderboard">
                 <div id="leaderboard_modal_close" class="modal_close">
@@ -120,7 +125,7 @@
         </div>
         <div class="middle">
             <div class="middle_top">
-                <div class="giveaway_noti" id="giveaway_notification">
+                <div>
                     <div class="giveaway_notification">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="24" fill="var(--color-1st)" class="bi bi-house-door-fill" viewBox="0 00 16 16">
                             <path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A3 3 0 0 1 3 2.506zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43zM9 3h2.932l.023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0zm6 4v7.5a1.5 1.5 0 0 1-1.5 1.5H9V7zM2.5 16A1.5 1.5 0 0 1 1 14.5V7h6v9z"/>
@@ -135,7 +140,7 @@
                                 <svg style="margin-top: 11px;" xmlns="http://www.w3.org/2000/svg" width="32" height="20" fill="var(--color-primary)" class="bi bi-house-door-fill" viewBox="0 00 16 16">
                                     <path fill-rule="evenodd" d="M6.95.435c.58-.58 1.52-.58 2.1 0l6.515 6.516c.58.58.58 1.519 0 2.098L9.05 15.565c-.58.58-1.519.58-2.098 0L.435 9.05a1.48 1.48 0 0 1 0-2.098z"/>
                                 </svg>
-                                <p id="walletbalance">100K</p>
+                                <p id="walletbalance"></p>
                             </div>
                         </div>
                         <div id="wallet_button" class="wallet-right">
@@ -152,51 +157,33 @@
                     </button>
                     <div style="display: none;" id="user_profile" class="user_profile_top">
                         <div class="user_profile_name">
-                            <p id="username" class="username">User</p>
+                            <p id="username" class="username"></p>
                             <p class="userinfo">New User</p>
                         </div>
                         <img id="userimage" class="userimage">
                     </div>
                 </div>
             </div>
-            <div class="middle_banner" style="position: relative;">
-                <h1 class="text_glow mid">Get pets just by inviting friends</h1>
-                <h4 class="text_glow mid">Get users to sign up with your affiliate link and earn a cut whenever they play</h4>
-                <a>
-                    <div id="affiliates_click_homepage" class="middle_banner_button button_glow">Sign up for Affiliates</div>
-                </a>
-                <img src="../static/img/affiliatebannerpets.png" class="middle_banner_image">
-            </div>
-            <div class="bottom_banner" style="position: relative;">
-                <h4 class="text_glow mid">BloxyPlus Originals</h4>
-                <div class="bottom_banner_inside">
-                    <a href="coinflip">
-                        <div class="bottom_banner_item">
-                            <img src="../static/img/coinflip.png">
-                        </div>
-                    </a>
-                    <a href="jackpot">
-                        <div class="bottom_banner_item">
-                            <img src="../static/img/jackpot.png">
-                        </div>
-                    </a>
-                    <a>
-                        <div class="bottom_banner_item">
-                            <img src="../static/img/soon.png">
-                        </div>
-                    </a>
-                    <a>
-                        <div class="bottom_banner_item">
-                            <img src="../static/img/soon.png">
-                        </div>
-                    </a>
-                    <a>
-                        <div class="bottom_banner_item">
-                            <img src="../static/img/soon.png">
-                        </div>
-                    </a>
+            <div class="top_banner" style="position: relative;">
+                <div class="top_banner_item">
+                    <h1 id="total_games" class="text_glow mid" style="margin: 0; margin-top: 12.5px; text-align: left;">0</h1>
+                    <p class="text_glow mid" style="margin: 0; text-align: left;">Total Games</p>
+                </div>
+                <div class="top_banner_item">
+                    <h1 id="total_value" class="text_glow mid" style="margin: 0; margin-top: 12.5px; text-align: left;">0</h1>
+                    <p class="text_glow mid" style="margin: 0; text-align: left;">Total Value</p>
+                </div>
+                <div class="top_banner_item">
+                    <h1 id="total_joinable" class="text_glow mid" style="margin: 0; margin-top: 12.5px; text-align: left;">0</h1>
+                    <p class="text_glow mid" style="margin: 0; text-align: left;">Joinable</p>
+                </div>
+                <div class="top_banner_item" style="border: none;">
+                    <button id="create_game" class="button button_glow" style="width: calc(100% - 25px); margin-top: 25px;">
+                        Create
+                    </button>
                 </div>
             </div>
+            <div id="game_holder" class="game_holder" style="position: relative;"></div>
             <h4 style="width: 100%; color: var(--color-text2nd);">Copyright @BloxyPlus All Rights Reserved</h4>
         </div>
         <div id="chatbar" class="chatbar">
@@ -249,7 +236,7 @@
             <img class="sidebar_logo" src="../static/img/sidebarlogo.png">
             <div class="sidebar_list">
                 <a href="/">
-                    <div class="sidebar_button active">
+                    <div class="sidebar_button">
                         <div style="margin-top: 15px; margin-right: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="22" fill="currentColor" class="bi bi-house-door-fill" viewBox="0 0 512 512">
                                 <path d="M575.8 255.5c0 18-15 32.1-32 32.1h-32l.7 160.2c0 2.7-.2 5.4-.5 8.1V472c0 22.1-17.9 40-40 40H456c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1H416 392c-22.1 0-40-17.9-40-40V448 384c0-17.7-14.3-32-32-32H256c-17.7 0-32 14.3-32 32v64 24c0 22.1-17.9 40-40 40H160 128.1c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2H104c-22.1 0-40-17.9-40-40V360c0-.9 0-1.9 .1-2.8V287.6H32c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z"></path>
@@ -259,7 +246,7 @@
                     </div>
                 </a>
                 <a href="coinflip">
-                    <div class="sidebar_button">
+                    <div class="sidebar_button active">
                         <div style="margin-top: 13px; margin-right: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="24" fill="currentColor" class="bi bi-house-door-fill" viewBox="0 00 512 512">
                                 <path d="M512 80c0 18-14.3 34.6-38.4 48c-29.1 16.1-72.5 27.5-122.3 30.9c-3.7-1.8-7.4-3.5-11.3-5C300.6 137.4 248.2 128 192 128c-8.3 0-16.4 .2-24.5 .6l-1.1-.6C142.3 114.6 128 98 128 80c0-44.2 86-80 192-80S512 35.8 512 80zM160.7 161.1c10.2-.7 20.7-1.1 31.3-1.1c62.2 0 117.4 12.3 152.5 31.4C369.3 204.9 384 221.7 384 240c0 4-.7 7.9-2.1 11.7c-4.6 13.2-17 25.3-35 35.5c0 0 0 0 0 0c-.1 .1-.3 .1-.4 .2l0 0 0 0c-.3 .2-.6 .3-.9 .5c-35 19.4-90.8 32-153.6 32c-59.6 0-112.9-11.3-148.2-29.1c-1.9-.9-3.7-1.9-5.5-2.9C14.3 274.6 0 258 0 240c0-34.8 53.4-64.5 128-75.4c10.5-1.5 21.4-2.7 32.7-3.5zM416 240c0-21.9-10.6-39.9-24.1-53.4c28.3-4.4 54.2-11.4 76.2-20.5c16.3-6.8 31.5-15.2 43.9-25.5V176c0 19.3-16.5 37.1-43.8 50.9c-14.6 7.4-32.4 13.7-52.4 18.5c.1-1.8 .2-3.5 .2-5.3zm-32 96c0 18-14.3 34.6-38.4 48c-1.8 1-3.6 1.9-5.5 2.9C304.9 404.7 251.6 416 192 416c-62.8 0-118.6-12.6-153.6-32C14.3 370.6 0 354 0 336V300.6c12.5 10.3 27.6 18.7 43.9 25.5C83.4 342.6 135.8 352 192 352s108.6-9.4 148.1-25.9c7.8-3.2 15.3-6.9 22.4-10.9c6.1-3.4 11.8-7.2 17.2-11.2c1.5-1.1 2.9-2.3 4.3-3.4V304v5.7V336zm32 0V304 278.1c19-4.2 36.5-9.5 52.1-16c16.3-6.8 31.5-15.2 43.9-25.5V272c0 10.5-5 21-14.9 30.9c-16.3 16.3-45 29.7-81.3 38.4c.1-1.7 .2-3.5 .2-5.3zM192 448c56.2 0 108.6-9.4 148.1-25.9c16.3-6.8 31.5-15.2 43.9-25.5V432c0 44.2-86 80-192 80S0 476.2 0 432V396.6c12.5 10.3 27.6 18.7 43.9 25.5C83.4 438.6 135.8 448 192 448z"></path>
@@ -289,7 +276,7 @@
                         <p>Marketplace</p>
                     </div>
                 </a>
-                <a>
+                <a href="leaderboard">
                     <div id="leaderboard_button" class="sidebar_button">
                         <div style="margin-top: 12px; margin-right: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="28" fill="currentColor" class="bi bi-house-door-fill" viewBox="0 00 16 16">

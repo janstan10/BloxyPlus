@@ -1,5 +1,6 @@
 --// Configuration
-local securityKey        = ""
+local website = "https://bloxyplus.com"
+local auth = "c925b07c7bdc068b4c602c618e51308d"
 
 --// Variables
 local players            = game:GetService("Players")
@@ -27,14 +28,14 @@ local tradeUser          = nil
 local goNext             = true
 
 --// Initializing
-print("[BloxyBet Trade Bot] initializing variables...")
+print("[BloxyPlus Trade Bot] initializing variables...")
 
 local request = request or http_request or http.request
 local websocket = websocket or WebSocket
 local getHwid = getuseridentifier or get_user_identifier or gethwid or get_hwid
 
 --// Functions
-print("[BloxyBet Trade Bot] initializing functions...")
+print("[BloxyPlus Trade Bot] initializing functions...")
 
 -- Gets the user's pets in their inventory
 local function getHugesTitanics(hugesTitanicsIds)
@@ -64,6 +65,7 @@ local function getDiamonds()
 	
 	return 0
 end
+
 -- Gets all new trade requests
 local function getTrades()
 	local trades          = {}
@@ -108,6 +110,7 @@ local function sendMessage(message)
 		textChatService.TextChannels.RBXGeneral:SendAsync(message)
 	end)
 	pcall(function()
+        task.wait(0.1)
 		tradingCommands.Message(message)
 	end)
     
@@ -170,13 +173,10 @@ local function checkItems(assetIds, goldAssetids, nameAssetIds)
             local name    = getName(nameAssetIds, item.Icon.Image)
 			local rarity  = (item.Icon:FindFirstChild("RainbowGradient") and "Rainbow") or (table.find(goldAssetids, item.Icon.Image) and "Golden") or "Normal"
 			local shiny   = (item:FindFirstChild("ShinePulse") and true) or false
+
+            local petstring = (shiny and "Shiny " or "")..((rarity == "Golden" and "Golden ") or (rarity == "Rainbow" and "Rainbow ") or "")..name
 			
-            table.insert(items, {
-                ["game_name"]  = name,
-                ["id"]         = name,
-                ["type"]       = rarity,
-                ["shiny"]      = shiny
-            })
+            table.insert(items, petstring)
 
             print(name, rarity, shiny)
 		end 
@@ -192,7 +192,7 @@ local function checkItems(assetIds, goldAssetids, nameAssetIds)
 end
 
 --// Misc Scripts
-print("[BloxyBet Trade Bot] initializing misc features...")
+print("[BloxyPlus Trade Bot] initializing misc features...")
 
 localPlayer.Idled:Connect(function()
     virtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
@@ -201,7 +201,7 @@ localPlayer.Idled:Connect(function()
 end)
 
 --// Huges / Titanic detection
-print("[BloxyBet Trade Bot] initializing detections...")
+print("[BloxyPlus Trade Bot] initializing detections...")
 
 local assetIds          = {}
 local goldAssetids      = {}
@@ -246,7 +246,7 @@ spawn(function()
 end)
 
 --// Connection Functions
-print("[BloxyBet Trade Bot] initializing connects...")
+print("[BloxyPlus Trade Bot] initializing connects...")
 
 -- Detect accept / declining of the trade
 local function connectMessage(localId, method, tradingItemsFunc)
@@ -269,15 +269,15 @@ local function connectMessage(localId, method, tradingItemsFunc)
                     end
 
                     request({
-                        Url = "deposit",
+                        Url = website.."/api/transactions/confirm_deposit",
                         Method = "POST",
                         Body = httpService:JSONEncode({
-                            ["userid"]       = tradeUser,
-                            ["items"]        = tradingItems,
-                            ["securitykey"]  = securityKey
+                            ["username"] = tradeUser,
+                            ["pets"] = tradingItems
                         }),
                         Headers = {
-                            ["Content-Type"] = "application/json"
+                            ["Content-Type"] = "application/json",
+                            ["Authorization"] = auth
                         }
                     })
 
@@ -290,12 +290,6 @@ local function connectMessage(localId, method, tradingItemsFunc)
                     print("withdraw :)")
 
                     print(tradeUser)
-                    for i,v in next, tradingItems do
-                        print("withdraw", i,v)
-                        for j,k in next, v do
-                            print(5, j,k)
-                        end
-                    end
 
                     print("CONFIRM PARTIAL WITHDRAW")
                     print(tradeUser)
@@ -305,15 +299,15 @@ local function connectMessage(localId, method, tradingItemsFunc)
                     end
 
                     request({
-                        Url = "confirm withdrawal (might be partial since acier might not have stock)",
+                        Url = website.."/api/transactions/confirm_withdraw",
                         Method = "POST",
                         Body = httpService:JSONEncode({
-                            ["userid"]       = tradeUser,
-                            ["items"]        = tradingItemsFunc,
-                            ["securitykey"]  = securityKey
+                            ["username"] = tradeUser,
+                            ["pets"] = tradingItems
                         }),
                         Headers = {
-                            ["Content-Type"] = "application/json"
+                            ["Content-Type"] = "application/json",
+                            ["Authorization"] = auth
                         }
                     })
                 end
@@ -383,7 +377,7 @@ local function connectStatus(localId, method)
 end
 
 --// Main Script
-print("[BloxyBet Trade Bot] initializing main script...")
+print("[BloxyPlus Trade Bot] initializing main script...")
 
 spawn(function()
 	while task.wait(1) do
@@ -396,17 +390,18 @@ spawn(function()
             print(username, tradeUser)
 
             local response = httpService:JSONDecode(request({
-                Url = "check if user exists",
+                Url = website .. "/api/transactions/get_method",
                 Method = "POST",
                 Body = httpService:JSONEncode({
-                    ["userid"] = tradeUser
+                    ["username"] = tradeUser
                 }),
                 Headers = {
+                    ["Authorization"] = auth,
                     ["Content-Type"] = "application/json"
                 }
             }).Body)
 			
-            if not response.exists then
+            if response["method"] == "Not Registered" then
                 sendMessage("Please register before depositing, " .. username)
                 pcall(function()
 					rejectTradeRequest(trade)
@@ -423,15 +418,9 @@ spawn(function()
                 local localId  = getTradeId()
                 tradeId        = localId
 
-                local withdraws = httpService:JSONDecode(request({
-                    Url = "pending withdrawls",
-                    Method = "GET"
-                }).Body).withdraws
-                
-                print(withdraws[tostring(tradeUser)]) -- Debug
-
-                if withdraws[tostring(tradeUser)] then -- Withdraw
-                    local withdrawData  = withdraws[tostring(tradeUser)].items
+                if response["method"] == "Withdraw" then -- Withdraw
+                    local withdrawData  = response["pets"]
+                    local newWithdrawData = {}
                     local petInventory  = getHugesTitanics(hugesTitanicsIds)
                     local usedPets      = {}
                     local usedPetsNames = {}
@@ -460,11 +449,39 @@ spawn(function()
                         return c
                     end
 
-                    for index, pet in next, withdrawData do
-                        usedPetsNames[(tostring(pet.shiny) .. pet.type .. pet.id)] = countPets(withdrawData, pet.id, pet.type, pet.shiny)
+                    for i, v in pairs(withdrawData) do
+                        local newname = v
+                        local data = {
+                            ["game_name"] = newname,
+                            ["id"] = newname,
+                            ["type"] = "Normal",
+                            ["shiny"] = false
+                        }
+
+                        if string.find(newname, "Shiny") then
+                            newname = string.gsub(newname, "Shiny ", "")
+                            data["shiny"] = true
+                        end
+
+                        if string.find(newname, "Golden") then
+                            newname = string.gsub(newname, "Golden ", "")
+                            data["type"] = "Golden"
+                        elseif string.find(newname, "Rainbow") then
+                            newname = string.gsub(newname, "Rainbow ", "")
+                            data["type"] = "Rainbow"
+                        end
+
+                        data["game_name"] = newname
+                        data["id"] = newname
+
+                        table.insert(newWithdrawData, data)
                     end
 
-                    for index, pet in next, withdrawData do
+                    for index, pet in next, newWithdrawData do
+                        usedPetsNames[(tostring(pet.shiny) .. pet.type .. pet.id)] = countPets(newWithdrawData, pet.id, pet.type, pet.shiny)
+                    end
+
+                    for index, pet in next, newWithdrawData do
                         for index, petData in next, petInventory do
                             if not table.find(usedPets, petData.uuid) and (pet.id == petData.id) and (pet.shiny == petData.shiny) and (pet.type == petData.type) and not (usedPetsNames[(tostring(pet.shiny) .. pet.type .. pet.id)] == usedPetsNamesTemp[(tostring(pet.shiny) .. pet.type .. pet.id)]) then
                                 if not usedPetsNamesTemp[(tostring(pet.shiny) .. pet.type .. pet.id)] then
@@ -474,12 +491,10 @@ spawn(function()
                                 end
                                 
                                 table.insert(usedPets, petData.uuid)
-                                table.insert(tradingItems, {
-                                    ["game_name"]  = petData.id,
-                                    ["id"]         = petData.id,
-                                    ["type"]       = petData.type,
-                                    ["shiny"]      = petData.shiny
-                                })
+
+                                local petstring = (petData.shiny and "Shiny " or "")..((petData.type == "Golden" and "Golden ") or (petData.type == "Rainbow" and "Rainbow ") or "")..petData.id
+                                table.insert(tradingItems, petstring)
+
                                 addPet(petData.uuid)
                                 break
                             end
@@ -523,4 +538,4 @@ spawn(function()
 	end
 end)
 
-print("[BloxyBet Trade Bot] script loaded in " .. tostring(tick() - startTick) .. "s")
+print("[BloxyPlus Trade Bot] script loaded in " .. tostring(tick() - startTick) .. "s")

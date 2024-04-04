@@ -1,4 +1,8 @@
+import csv
+import time
+import json
 import random
+import asyncio
 import threading
 import secrets
 import requests
@@ -10,7 +14,7 @@ from flask_jwt_extended import JWTManager, create_access_token, decode_token
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO
-from io import BytesIO
+from io import BytesIO, StringIO
 from functools import wraps
 
 locks = {}
@@ -20,6 +24,7 @@ database = cluster["BloxyPlus"]
 users = database["Users"]
 values = database["Values_Cosmic"]
 games = database["Games"]
+giveaways = database["Giveaways"]
 withdraws = database["Withdraws"]
 
 app = Flask(
@@ -33,6 +38,7 @@ app.config['JWT_SECRET_KEY'] = 'your_secret_key'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=3650)
 jwt = JWTManager(app)
 socketio = SocketIO(app)
+#socketio = SocketIO(app, async_mode='gevent')
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -55,6 +61,30 @@ def format(value):
         suffix_index += 1
 
     return f"{value:.1f}{suffixes[suffix_index]}"
+
+async def run_giveaway(data):
+    id = data["id"]
+    time = data["time"]
+    thumbnail = data["thumbnail"]
+    value = data["value"]
+    
+    if time <= 0:
+        socketio.emit('giveaway_ended', {"thumbnail": thumbnail, "value": value, "time": 0}, namespace='/site')
+        return  # End the function if time is already 0
+
+    while time > 0:
+        time = time - 1
+        giveaways.update_one({"id": id}, {"$set": {"time": time}})
+        socketio.emit('giveaway_updated', {"thumbnail": thumbnail, "value": value, "time": time}, namespace='/site')
+        await asyncio.sleep(1)
+
+    giveaways.delete_one({"id": id}, {"$set": {"time": time}})
+    socketio.emit('giveaway_ended', {"thumbnail": thumbnail, "value": value, "time": 0}, namespace='/site')
+
+def async_run_giveaway(data):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(run_giveaway(data))
 
 def remove_duplicate_pets():
     collection = users
@@ -121,10 +151,6 @@ def transaction_lock(func):
             return func(*args, **kwargs)
     return wrapper
 
-@app.errorhandler(404)
-def not_found_error(error):
-    return redirect("/")
-
 @socketio.on('connect', namespace='/games')
 def handle_games_connect():
     print("Connected to Games")
@@ -145,40 +171,36 @@ def handle_site_disconnect():
     connected_clients -= 1
     socketio.emit("users_added", {"users": connected_clients}, namespace="/site")
 
+@app.errorhandler(404)
+def not_found_error(error):
+    return redirect("/")
+
 @app.route("/r/<userid>")
 def user_profile(userid):
     return redirect("/")
 
+@app.route("/socket/test")
+def test_socket():
+    socketio.emit('giveaway_created', {"thumbnail": "test", "value": 100000, "time": 60}, namespace='/site')
+    return redirect("/")
+
+@app.route("/socket/test2")
+def test_socket2():
+    socketio.emit('giveaway_updated', {"thumbnail": "test", "value": 100000, "time": 50}, namespace='/site')
+    return redirect("/")
+
 @app.route("/")
 def index():
-    userdata = {}
-    logged_in = check_if_logged_in(request)
+    return render_template("index.html")
 
-    if logged_in:
-        decoded_token = decode_token(request.cookies.get("access_token_cookie"))
-        identity = decoded_token['sub']
-        
-        res = users.find_one({"id": identity})
-        if res:
-            balance = 0
+@app.route("/coinflip")
+def coinflip():
+    return render_template("coinflip.html")
 
-            for i in res["inventory"]:
-                check = values.find_one({"name": i["name"].upper()})
-                if check:
-                    balance = balance + check["value"]
-
-            userdata["userid"] = identity
-            userdata["username"] = res["username"]
-            userdata["balance_int"] = balance
-            userdata["balance_str"] = format(balance)
-            userdata["thumbnail"] = res["thumbnail"]
-
-            if res["banned"] == False:
-                return render_template("index.html", banreason=None, logged_in=logged_in, userdata=userdata)
-            else:
-                return render_template("banned.html", banreason=res["banned"])
-    else:
-        return render_template("index.html", logged_in=logged_in, banreason=None, userdata=userdata)
+@app.route("/tos")
+@app.route("/terms")
+def tos():
+    return render_template("tos.html")
 
 @app.route('/image')
 def get_image():
@@ -192,6 +214,76 @@ def get_image():
     
     content_type = 'image/png'
     return send_file("web/static/img/errorloading.png", mimetype=content_type)
+
+@app.route("/api/affiliates/get", methods=["GET"])
+def get_affiliates():
+    if not check_if_logged_in(request):
+        return jsonify(error=False, message="User not logged in"), 400
+    
+    decoded_token = decode_token(request.cookies.get("access_token_cookie"))
+    identity = decoded_token['sub']
+
+    res = users.find_one({"id": identity})
+    if res:
+        return jsonify(error=False, code="https://bloxyplus.com/r/" + str(res["id"]))
+    else:
+        return jsonify(error=True, message="Internal Server Error"), 500
+
+@app.route("/api/leaderboard/get", methods=["GET"])
+def get_leaderboard():
+    leaderboard = []
+
+    for user in users.find():
+        profit = 0
+        value = 0
+        inventory = user["inventory"]
+
+        for pet in inventory:
+            if itemvalue := values.find_one({"name": pet["name"].upper()}):
+                value += itemvalue["value"]
+
+        profit = (user["stats"]["withdrawn"] + value) - user["stats"]["deposited"]
+
+        leaderboard.append({"name": user["username"], "thumbnail": user["thumbnail"], "profit": profit})
+
+    leaderboard = sorted(leaderboard, key=lambda x: x["profit"], reverse=True)
+    top_10_leaderboard = leaderboard[:10]
+
+    formatted_leaderboard = []
+    
+    for i, entry in enumerate(top_10_leaderboard):
+        formatted_leaderboard.append({"name": entry['name'], "thumbnail": entry['thumbnail'], "profit": entry['profit']})
+
+    return jsonify(error=False, leaderboard=formatted_leaderboard)
+
+@app.route("/api/user/get", methods=["GET"])
+def get_user():
+    if not check_if_logged_in(request):
+        return jsonify(error=False, message="User not logged in"), 400
+    
+    decoded_token = decode_token(request.cookies.get("access_token_cookie"))
+    identity = decoded_token['sub']
+        
+    res = users.find_one({"id": identity})
+    if res:
+        userdata = {}
+        balance = 0
+
+        for i in res["inventory"]:
+            check = values.find_one({"name": i["name"].upper()})
+            if check:
+                balance = balance + check["value"]
+
+        userdata["userid"] = identity
+        userdata["username"] = res["username"]
+        userdata["balance_int"] = balance
+        userdata["balance_str"] = format(balance)
+        userdata["inventory"]  = res["inventory"]
+        userdata["thumbnail"] = res["thumbnail"]
+
+        return jsonify(error=False, data=userdata), 200
+    else:
+        return jsonify(error=True, message="Internal Server Error"), 500
 
 @app.route("/api/transactions/get_method", methods=["POST"])
 def get_method():
@@ -252,12 +344,21 @@ def confirm_withdraw():
     
     json_data = request.get_json()
     username = json_data.get("username")
-    newpets = []
+    pets = json_data.get("pets")
+
+    print(username)
     
     if not users.find_one({"id": username}):
         return jsonify(error=True, method="Not Registered"), 400
     
-    withdraws.delete_one({"id": username})
+    withdrawdata = withdraws.find_one({"id": username})
+    
+    if len(withdrawdata['pets']) == len(pets):
+        withdraws.delete_one({"id": username})
+    else:
+        for pet in pets:
+            withdraws.update_one({{"id": username}, {"$pull": {"pets": {"name": pet}}}})
+
     return jsonify(error=False, message="Successfully Withdrew"), 200
 
 @app.route("/api/chat/get")
@@ -306,14 +407,137 @@ def get_coinflip():
     send = {}
     allgames = []
 
+    totaljoinable = 0
+    totalgames = 0
+    totalvalue = 0
+
     for i in games.find():
         data = i
+        totalgames += 1
+        totalvalue += data["value"]
+
+        if data["winner"] == None:
+            totaljoinable += 1
+
         allgames.append({'type': data['type'], 'winner': data["winner"], 'gid': str(data['gid']), 'value': data['value'], 'active': data['active'], 'heads': data['heads'], 'tails': data['tails']})
 
     send["error"] = False
     send["games"] = allgames
+    send["stats"] = {"total_games": totalgames, "total_value": totalvalue, "total_joinable": totaljoinable}
 
     return jsonify(send), 200
+
+def get_icon(name):
+    if data := values.find_one({"name": str.upper(name)}):
+        return data["image_url"]
+    else:
+        return ""
+
+@app.route('/api/coinflip/create', methods=['POST'])
+@limiter.limit("100 per minute")
+@transaction_lock
+def create_coinflip():
+    if not check_if_logged_in(request):
+        return jsonify(error=True, message="You are not logged in"), 400
+
+    user_id = decode_token(request.cookies.get("access_token_cookie"))['sub']
+    user_data = users.find_one({"id": user_id})
+
+    if user_data and user_data.get("in_transaction"):
+        return jsonify(error=True, message="You are already creating a game!"), 400
+
+    users.update_one({"id": user_id}, {"$set": {"in_transaction": True}})
+
+    json_data = request.get_json()
+    items_to_bet = json_data.get("items")
+    choice = json_data.get("choice")
+
+    if not items_to_bet or not choice:
+        users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+        return jsonify(error=True, message="Invalid Arguments"), 400
+    
+    if len(items_to_bet) == 0:
+        users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+        return jsonify(error=True, message="You must bet at least 1 item!"), 400
+    
+    user_identity = decode_token(request.cookies.get("access_token_cookie"))['sub']
+    user_data = users.find_one({"id": user_identity})
+    
+    if user_data:
+        total_value = 0
+        new_inventory = []
+
+        for inventory_item in user_data["inventory"]:
+            if inventory_item["uid"] in [item["uid"] for item in items_to_bet]:
+                total_value += values.find_one({"name": inventory_item["name"].upper()})["value"]
+            else:
+                new_inventory.append(inventory_item)
+
+        if len(new_inventory) != len(user_data["inventory"]) - len(items_to_bet):
+            users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+            return jsonify(error=True, message="You dont own those item(s)"), 400
+        else:
+            game_id = secrets.token_hex(nbytes=16)
+
+            for pet in items_to_bet:
+                pet["thumbnail"] = get_icon(pet["name"])
+
+            game_data = {
+                "type": "Coinflip",
+                "gid": game_id,
+                "value": total_value,
+                "winner": None,
+                "active": True,
+                "heads": {
+                    "username": user_data["username"],
+                    "thumbnail": user_data["thumbnail"],
+                    "userid": user_identity,
+                    "pets": items_to_bet
+                },
+                "tails": {
+                    "username": None,
+                    "thumbnail": None,
+                    "userid": None,
+                    "pets": []
+                }
+            }
+
+            if choice == "tails":
+                game_data["heads"] = {
+                    "username": None,
+                    "thumbnail": None,
+                    "userid": None,
+                    "pets": []
+                }
+
+                game_data["tails"] = {
+                    "username": user_data["username"],
+                    "thumbnail": user_data["thumbnail"],
+                    "userid": user_identity,
+                    "pets": items_to_bet
+                }
+
+            games.insert_one(game_data)
+            totaljoinable = 0
+            totalgames = 0
+            totalvalue = 0
+
+            for i in games.find():
+                data = i
+                totalgames += 1
+                totalvalue += data["value"]
+
+                if data["winner"] == None:
+                    totaljoinable += 1
+
+            users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+            users.update_one({"id": user_identity}, {"$set": {"inventory": new_inventory}})
+            socketio.emit('game_created', {'stats': {"total_games": totalgames, "total_value": totalvalue, "total_joinable": totaljoinable}, 'type': game_data['type'], 'winner': game_data["winner"], 'gid': str(game_data['gid']), 'value': game_data['value'], 'active': game_data['active'], 'heads': game_data['heads'], 'tails': game_data['tails']}, namespace='/games')
+            thread = threading.Thread(target=remove_duplicate_pets)
+            thread.start()
+            return jsonify(error=False, message="Successfully Created Game"), 200
+    else:
+        return jsonify(error=True, message="We encountered an error grabbing your data, please try again later"), 400
 
 @app.route('/api/coinflip/join', methods=['POST'])
 @limiter.limit("100 per minute")
@@ -359,21 +583,29 @@ def join_coinflip():
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
         return jsonify(error=True, message="You can't join your own game!"), 400
     
-    selected_item_uids = {selected_item["uid"] for selected_item in selected_items}
-    user_inventory_uids = {item["uid"] for item in user_data["inventory"]}
+    user_inventory_ids = []
+    selected_item_ids = []
+    found_ids = []
 
-    if not selected_item_uids.issubset(user_inventory_uids):
+    for pet in user_data["inventory"]:
+        user_inventory_ids.append(pet["uid"])
+
+    for pet in selected_items:
+        selected_item_ids.append(pet["uid"])
+
+    for uid in user_inventory_ids:
+        if uid in selected_item_ids:
+            found_ids.append(uid)
+
+    if len(found_ids) != len(selected_item_ids):
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-        return jsonify(error=True, message="Invalid Item Authentication"), 400
+        return jsonify(error=True, message="You don't own those item(s)!"), 400
+    
+    for uid in found_ids:
+        users.update_one({"id": user_id}, {"$pull": {"inventory": {"uid": uid}}})
 
-    filtered_inventory = [item for item in user_data["inventory"] if item["uid"] not in selected_item_uids]
-    joined_value = sum(values.find_one({"name": selected_item["name"].upper()})["value"] for selected_item in selected_items)
-
-    if not (game["value"]*0.9 <= joined_value <= game["value"]*1.1):
-        users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-        return jsonify(error=True, message="Items not in range"), 400
-
-    users.update_one({"id": user_identity}, {"$set": {"inventory": filtered_inventory}})
+    for pet in selected_items:
+        pet["thumbnail"] = get_icon(pet["name"])
 
     chosen_side = None
     winner_side = "heads"
@@ -393,25 +625,48 @@ def join_coinflip():
         winner_side = "tails"
 
     games.update_one({"gid": game_id}, {"$set": {"winner": winner_side, "active": False, chosen_side: side_data}})
+    time.sleep(0.5)
     game_data = games.find_one({"gid": game_id})
 
-    winner_identity = game_data[winner_side]["userid"]
-    winner_obj = users.find_one({"id": winner_identity})
-    winner_inventory = winner_obj["inventory"]
-    winner_inventory.extend(game_data["heads"]["pets"])
-    winner_inventory.extend(game_data["tails"]["pets"])
-    
-    users.update_one({"id": winner_identity}, {"$set": {"inventory": winner_inventory}})
-    socketio.emit('game_ended', {'type': game_data['type'], 'winner': game_data["winner"], 'gid': str(game_data['gid']), 'value': game_data['value'], 'active': game_data['active'], 'heads': game_data['heads'], 'tails': game_data['tails']}, namespace='/games')
+    winner_userid = game_data[winner_side]["userid"]
+
+    for pet in game_data["heads"]["pets"]:
+        users.update_one({"id": winner_userid}, {"$push": {"inventory": pet}})
+
+    for pet in game_data["tails"]["pets"]:
+        users.update_one({"id": winner_userid}, {"$push": {"inventory": pet}})
+
+    # need to do taxes
+
+    totaljoinable = 0
+    totalgames = 0
+    totalvalue = 0
+
+    for i in games.find():
+        data = i
+        totalgames += 1
+        totalvalue += data["value"]
+
+        if data["winner"] is None:
+            totaljoinable += 1
+
+    socketio.emit('game_ended', {'stats': {"total_games": totalgames, "total_value": totalvalue, "total_joinable": totaljoinable}, 'type': game_data['type'], 'winner': game_data["winner"], 'gid': str(game_data['gid']), 'value': game_data['value'], 'active': game_data['active'], 'heads': game_data['heads'], 'tails': game_data['tails']}, namespace='/games')
     users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-    thread = threading.Thread(target=remove_duplicate_pets)
-    thread.start()
     return jsonify(error=False, message="Successfully joined the game!"), 200
 
-@app.route('/api/coinflip/create', methods=['POST'])
+@app.route('/api/giveaway/get', methods=['GET'])
 @limiter.limit("100 per minute")
 @transaction_lock
-def create_coinflip():
+def get_giveaway():
+    if giveaway := giveaways.find_one({"id": "giveaway"}):
+        return jsonify(giveaways=[{"thumbnail": giveaway["thumbnail"], "value": giveaway["value"], "time": giveaway["time"]}]), 200
+    else:
+        return jsonify(giveaways=[]), 200
+
+@app.route('/api/giveaway/create', methods=['POST'])
+@limiter.limit("100 per minute")
+@transaction_lock
+def create_giveaway():
     if not check_if_logged_in(request):
         return jsonify(error=True, message="You are not logged in"), 400
 
@@ -425,77 +680,57 @@ def create_coinflip():
 
     json_data = request.get_json()
     items_to_bet = json_data.get("items")
-    choice = json_data.get("choice")
 
-    if not items_to_bet or not choice:
+    if not items_to_bet:
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
         return jsonify(error=True, message="Invalid Arguments"), 400
     
+    if len(items_to_bet) != 1:
+        users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+        return jsonify(error=True, message="You can only giveaway 1 item at a time!"), 400
+    
     if len(items_to_bet) == 0:
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-        return jsonify(error=True, message="You must bet at least 1 item!"), 400
+        return jsonify(error=True, message="You must giveaway at least 1 item!"), 400
     
     user_identity = decode_token(request.cookies.get("access_token_cookie"))['sub']
     user_data = users.find_one({"id": user_identity})
     
     if user_data:
-        total_value = 0
-        new_inventory = []
+        founditem = False
 
-        for inventory_item in user_data["inventory"]:
-            if inventory_item["uid"] in [item["uid"] for item in items_to_bet]:
-                total_value += values.find_one({"name": inventory_item["name"].upper()})["value"]
-            else:
-                new_inventory.append(inventory_item)
-
-        if len(new_inventory) != len(user_data["inventory"]) - len(items_to_bet):
+        for item2 in user_data["inventory"]:
+            if item2["uid"] == items_to_bet[0]["uid"]:
+                founditem = item2
+                break
+        
+        if not founditem:
             users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-            return jsonify(error=True, message="Invalid Item Authentication"), 400
+            return jsonify(error=True, message="You dont own those item(s)"), 400
         else:
-            game_id = secrets.token_hex(nbytes=16)
+            if giveaways.find_one({"id": "giveaway"}):
+                users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
+                return jsonify(error=True, message="There is already an active giveaway"), 400
 
-            game_data = {
-                "type": "Coinflip",
-                "gid": game_id,
-                "value": total_value,
-                "winner": None,
-                "active": True,
-                "heads": {
-                    "username": user_data["username"],
-                    "thumbnail": user_data["thumbnail"],
-                    "userid": user_identity,
-                    "pets": items_to_bet
-                },
-                "tails": {
-                    "username": None,
-                    "thumbnail": None,
-                    "userid": None,
-                    "pets": []
-                }
+            itemdata = values.find_one({"name": founditem["name"].upper()})
+            
+            data = {
+                "thumbnail": itemdata["image_url"],
+                "value": itemdata["value"],
+                "time": 60,
+                "id": "giveaway"
             }
 
-            if choice == "tails":
-                game_data["heads"] = {
-                    "username": None,
-                    "thumbnail": None,
-                    "userid": None,
-                    "pets": []
-                }
-
-                game_data["tails"] = {
-                    "username": user_data["username"],
-                    "thumbnail": user_data["thumbnail"],
-                    "userid": user_identity,
-                    "pets": items_to_bet
-                }
-
-            games.insert_one(game_data)
+            giveaways.insert_one(data)
             users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-            users.update_one({"id": user_identity}, {"$set": {"inventory": new_inventory}})
-            socketio.emit('game_created', {'type': game_data['type'], 'winner': game_data["winner"], 'gid': str(game_data['gid']), 'value': game_data['value'], 'active': game_data['active'], 'heads': game_data['heads'], 'tails': game_data['tails']}, namespace='/games')
+            users.update_one({"id": user_id}, {"$pull": {"inventory": {"uid": founditem["uid"]}}})
+            socketio.emit('giveaway_created', {"thumbnail": data["thumbnail"], "value": data["value"], "time": data["time"]}, namespace='/site')
             thread = threading.Thread(target=remove_duplicate_pets)
             thread.start()
-            return jsonify(error=False, message="Successfully Created Game"), 200
+            thread2 = threading.Thread(target=async_run_giveaway, args=(data,))
+            thread2.start()
+
+            return jsonify(error=False, message="Successfully Created Giveaway"), 200
     else:
         return jsonify(error=True, message="We encountered an error grabbing your data, please try again later"), 400
 
@@ -545,7 +780,7 @@ def withdraw():
 
         if len(new_inventory) != len(user_data["inventory"]) - len(items_to_withdraw):
             users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-            return jsonify(error=True, message="Invalid Item Authentication"), 400
+            return jsonify(error=True, message="You dont own those item(s)"), 400
         else:
             withdraw = {
                 "id": user_data["id"],
@@ -584,7 +819,7 @@ def get_inventory():
                 item_data["name"] = i["name"]
                 item_data["uid"] = i["uid"]
                 item_data["value"] = check["value"]
-                item_data["image"] = check["image_url"]
+                item_data["thumbnail"] = check["image_url"]
                 balance += check["value"]
                 items += 1
 
@@ -697,5 +932,6 @@ def logout():
     return response
 
 if __name__ == "__main__":
+    #socketio.run(app, debug=True, host="0.0.0.0", port=8000)
     app.run(host="0.0.0.0", debug=True, port=8000)
     socketio.run(app, host="0.0.0.0", port=8000, debug=True)
