@@ -140,6 +140,18 @@ def check_if_logged_in(request):
     
     return True
 
+def get_icon(name):
+    if data := values.find_one({"name": str.upper(name)}):
+        return data["image_url"]
+    else:
+        return ""
+
+def get_value(name):
+    if data := values.find_one({"name": str.upper(name)}):
+        return data["value"]
+    else:
+        return 0
+
 def transaction_lock(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -239,8 +251,7 @@ def get_leaderboard():
         inventory = user["inventory"]
 
         for pet in inventory:
-            if itemvalue := values.find_one({"name": pet["name"].upper()}):
-                value += itemvalue["value"]
+            value += get_value(pet["name"])
 
         profit = (user["stats"]["withdrawn"] + value) - user["stats"]["deposited"]
 
@@ -269,10 +280,8 @@ def get_user():
         userdata = {}
         balance = 0
 
-        for i in res["inventory"]:
-            check = values.find_one({"name": i["name"].upper()})
-            if check:
-                balance = balance + check["value"]
+        for pet in res["inventory"]:
+            balance += get_value(pet["name"])
 
         userdata["userid"] = identity
         userdata["username"] = res["username"]
@@ -329,8 +338,9 @@ def confirm_deposit():
     if not users.find_one({"id": username}):
         return jsonify(error=True, method="Not Registered"), 400
     
-    for i in pets:
-        newpets.append({"name": i, "uid": secrets.token_hex(nbytes=16)})
+    for pet in pets:
+        users.update_one({"id": username}, {"$inc": {"stats.deposited": get_value(pet)}})
+        newpets.append({"name": pet, "uid": secrets.token_hex(nbytes=16)})
     
     user_obj = users.find_one({"id": username})
     user_inventory = user_obj["inventory"]
@@ -428,12 +438,6 @@ def get_coinflip():
 
     return jsonify(send), 200
 
-def get_icon(name):
-    if data := values.find_one({"name": str.upper(name)}):
-        return data["image_url"]
-    else:
-        return ""
-
 @app.route('/api/coinflip/create', methods=['POST'])
 @limiter.limit("100 per minute")
 @transaction_lock
@@ -470,7 +474,7 @@ def create_coinflip():
 
         for inventory_item in user_data["inventory"]:
             if inventory_item["uid"] in [item["uid"] for item in items_to_bet]:
-                total_value += values.find_one({"name": inventory_item["name"].upper()})["value"]
+                total_value += get_value(inventory_item["name"])
             else:
                 new_inventory.append(inventory_item)
 
@@ -712,12 +716,10 @@ def create_giveaway():
             if giveaways.find_one({"id": "giveaway"}):
                 users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
                 return jsonify(error=True, message="There is already an active giveaway"), 400
-
-            itemdata = values.find_one({"name": founditem["name"].upper()})
             
             data = {
-                "thumbnail": itemdata["image_url"],
-                "value": itemdata["value"],
+                "thumbnail": get_icon(founditem["name"]),
+                "value": get_value(founditem["name"]),
                 "time": 60,
                 "id": "giveaway"
             }
@@ -761,10 +763,9 @@ def withdraw():
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
         return jsonify(error=True, message="You must withdraw at least 1 item!"), 400
 
-    user_identity = decode_token(request.cookies.get("access_token_cookie"))['sub']
-    user_data = users.find_one({"id": user_identity})
+    user_data = users.find_one({"id": user_id})
 
-    if withdraws.find_one({"id": user_identity}):
+    if withdraws.find_one({"id": user_id}):
         users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
         return jsonify(error=True, message="You already have a Withdraw Pending!"), 400
 
@@ -789,9 +790,12 @@ def withdraw():
                 "pets": items_to_withdraw
             }
 
+            for pet in items_to_withdraw:
+                users.update_one({"id": user_id}, {"$inc": {"stats.withdrawn": get_value(pet["name"])}})
+
             withdraws.insert_one(withdraw)
             users.update_one({"id": user_id}, {"$set": {"in_transaction": False}})
-            users.update_one({"id": user_identity}, {"$set": {"inventory": new_inventory}})
+            users.update_one({"id": user_id}, {"$set": {"inventory": new_inventory}})
             thread = threading.Thread(target=remove_duplicate_pets)
             thread.start()
             return jsonify(error=False, message="Successfully Created Withdraw"), 200

@@ -695,7 +695,7 @@ a {
 }
 
 .user_profile_top:hover {
-  background-color: var(--color-border);
+  --background-color: var(--color-border);
 }
 
 .user_profile_name {
