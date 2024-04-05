@@ -1158,7 +1158,7 @@ a {
   width: 100%;
   background-color: var(--color-1st);
   opacity: 0.9;
-  display: flex;
+  display: none;
   flex-direction: column;
   justify-content: center;
   align-items: center;
