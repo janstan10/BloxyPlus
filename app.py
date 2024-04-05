@@ -38,7 +38,6 @@ app.config['JWT_SECRET_KEY'] = 'your_secret_key'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=3650)
 jwt = JWTManager(app)
 socketio = SocketIO(app)
-#socketio = SocketIO(app, async_mode='gevent')
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -933,6 +932,5 @@ def logout():
     return response
 
 if __name__ == "__main__":
-    #socketio.run(app, debug=True, host="0.0.0.0", port=8000)
     app.run(host="0.0.0.0", debug=True, port=8000)
     socketio.run(app, host="0.0.0.0", port=8000, debug=True)
