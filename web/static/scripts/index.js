@@ -3,7 +3,7 @@ let LoggedIn = false;
 let LoginCode = null;
 let SelectedItems = [];
 
-var site_socket = io.connect('https://bloxyplus.com/site');
+var site_socket = io.connect('https://beta.bloxyplus.com/site');
 //var site_socket = io.connect('http://127.0.0.1:8000/site');
 
 site_socket.on('users_added', function(data) {
