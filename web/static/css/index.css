@@ -1161,14 +1161,14 @@ a {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  display: none;
+  align-items: center;
 }
 
 .menu_item {
-  align-items: center;
   width: 100%;
   display: flex;
-  padding-left: 35%;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
 }
 
