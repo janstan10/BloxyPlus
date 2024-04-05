@@ -3,7 +3,7 @@ let LoggedIn = false;
 let LoginCode = null;
 let SelectedItems = [];
 
-var site_socket = io.connect('https://beta.bloxyplus.com/site');
+var site_socket = io.connect('https://bloxyplus.com/site');
 //var site_socket = io.connect('http://127.0.0.1:8000/site');
 
 site_socket.on('users_added', function(data) {
@@ -409,9 +409,9 @@ function GetUserData() {
                 $("#logout_button").show();
                 $("#login_button").hide();
 
-                if (!Result.body.data.whitelisted) {
-                    window.location.replace("https://discord.gg/bloxyplus");
-                }
+                //if (!Result.body.data.whitelisted) {
+                //    window.location.replace("https://discord.gg/bloxyplus");
+                //}
 
                 $('#username').html(Result.body.data.username);
                 $('#walletbalance').html(FormatNumber(Result.body.data.balance_int));
