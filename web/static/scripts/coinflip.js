@@ -1,7 +1,7 @@
 let GameID = null;
 let GameChoice = "heads";
 
-var games_socket = io.connect('https://bloxyplus.com/games');
+var games_socket = io.connect('https://beta.bloxyplus.com/games');
 //var games_socket = io.connect('http://127.0.0.1:8000/games');
 
 games_socket.on('game_created', function(data) {
