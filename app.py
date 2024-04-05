@@ -367,8 +367,8 @@ def confirm_withdraw():
     if len(withdrawdata['pets']) == len(pets):
         withdraws.delete_one({"id": username})
     else:
-        for pet in pets:
-            withdraws.update_one({{"id": username}, {"$pull": {"pets": {"name": pet}}}})
+        print(pets)
+        withdraws.update_one({"id": username}, {"$pull": {"pets": {"name": {"$in": pets}}}})
 
     return jsonify(error=False, message="Successfully Withdrew"), 200
 
