@@ -107,11 +107,11 @@ end
 local oldMessages = {}
 local function sendMessage(message)
 	pcall(function()
-		textChatService.TextChannels.RBXGeneral:SendAsync(message)
+		textChatService.TextChannels.RBXGeneral:SendAsync("BloxyPlus | "..message)
 	end)
 	pcall(function()
         task.wait(0.1)
-		tradingCommands.Message(message)
+		tradingCommands.Message("BloxyPlus | "..message)
 	end)
     
     local function countMessages(message, oldMessages)
