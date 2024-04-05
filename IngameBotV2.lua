@@ -1,5 +1,5 @@
 --// Configuration
-local website = "https://bloxyplus.com"
+local website = "https://beta.bloxyplus.com"
 local auth = "c925b07c7bdc068b4c602c618e51308d"
 
 --// Variables

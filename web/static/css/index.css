@@ -692,7 +692,6 @@ a {
   height: 55px;
   transition: 0.3s;
   cursor: pointer;
-  padding-left: 25px;
 }
 
 .user_profile_top:hover {
@@ -704,6 +703,7 @@ a {
   margin: 0;
   margin-top: -10px;
   margin-right: 5px;
+  margin-left: 70px;
 }
 
 .username {
